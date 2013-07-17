@@ -100,7 +100,6 @@ void loop() {
  byte button = WheelButton::getButtonDown();
  if( wheelButton != button ){
    wheelButton = button;
-   // Serial.println( button, BIN );
    
    switch(wheelButton){
      case B10000000:
@@ -113,12 +112,9 @@ void loop() {
  
  }
  
-  
+  // All Middleware ticks (Like loop() for middleware)
   MazdaLED::tick();
-  SerialCommand::tick();  
-  
-  // if( (millis() % 400) < 200 ) digitalWrite( BOOT_LED, HIGH );
-  // if( (millis() % 2000) < 1 ) sendTestFrame();
+  SerialCommand::tick();
   
   readBus( CANBus1 );
   readBus( CANBus2 );
@@ -137,9 +133,6 @@ void loop() {
     Message msg = messageQueue.pop();
     CANBus channel = busses[msg.busId-1];
     
-    // temp debug thing
-    if(SerialCommand::logOutputMode > 0) SerialCommand::printMessageToSerial(msg);
-    
     success = sendMessage( msg, channel );
     
     if( !success ){
@@ -149,8 +142,6 @@ void loop() {
     }
     
   }
-  
-  // digitalWrite( BOOT_LED, LOW );
   
 }
 
@@ -258,7 +249,7 @@ void readBus( CANBus channel ){
 
 void processMessage( Message msg ){
   
-  // Process incoming messages here.
+  // All Middleware process calls (Augment incoming CAN packets)
   msg = SerialCommand::process( msg );
   msg = MazdaLED::process( msg );
   msg = ChannelSwap::process( msg );
