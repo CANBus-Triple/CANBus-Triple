@@ -1,0 +1,3 @@
+[submodule "chrome-extention"]
+	path = chrome-extention
+	url = git://github.com/etx/CANBus-Triple-ChromeExtension
