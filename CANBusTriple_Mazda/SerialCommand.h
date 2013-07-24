@@ -18,6 +18,15 @@ Cmd    Mode   Filer PID
         4 Show higher than filter PID
 
 
+Enable / Disable reading of busses
+Cmd    Bus Enabled Flags
+0x04   0x7 (B111)         // Enable all 
+0x04   0x1 (B001)         // Enable only Bus 1
+0x04   0x2 (B010)         // Enable only Bus 2
+0x04   0x4 (B100)         // Enable only Bus 3
+
+
+
 */
 
 #include "Middleware.h"
@@ -41,6 +50,8 @@ class SerialCommand : Middleware
     static void getAndSend();
     static void printChannelDebug();
     static void logCommand();
+    static void setBusEnableFlags();
+    static byte busEnabled;
     static Message newMessage;
 };
 
@@ -49,6 +60,7 @@ byte SerialCommand::logOutputMode = 0x0;
 unsigned int SerialCommand::logOutputFilter = 0;
 QueueArray<Message> *SerialCommand::mainQueue;
 //CANBus SerialCommand::busses[3];
+byte SerialCommand::busEnabled = 0x7; // Start with all busses enabled
 
 
 void SerialCommand::init( QueueArray<Message> *q, CANBus b[], int logOutput )
@@ -77,10 +89,18 @@ Message SerialCommand::process( Message msg )
 void SerialCommand::printMessageToSerial( Message msg )
 {
   
-  // Filter
+  // PID Filter
   if( logOutputMode == 2 && msg.frame_id != logOutputFilter ) return;
   if( logOutputMode == 3 && msg.frame_id < logOutputFilter ) return;
   if( logOutputMode == 4 && msg.frame_id > logOutputFilter ) return;
+  
+  // Bus Filter
+  byte flag;
+  flag = 0x1 << (msg.busId-1);
+  if( !(SerialCommand::busEnabled & flag) ){
+    return;
+  }
+  
   
   // Output to serial as json string
   Serial.print("{\"status\":\"");
@@ -144,8 +164,7 @@ void SerialCommand::processCommand(int command)
       logCommand();
     break;
     case 4:
-      
-      
+      setBusEnableFlags();
     break;
   }
 }
@@ -194,6 +213,18 @@ void SerialCommand::getAndSend()
 }
 
 
+void SerialCommand::setBusEnableFlags(){
+  
+  byte cmd[1];
+  int bytesRead = getCommandBody( cmd, 1 );
+  
+  SerialCommand::busEnabled = cmd[0];
+  Serial.print("Bus filter flag set to ");
+  Serial.println( SerialCommand::busEnabled, BIN );
+  
+}
+
+
 int SerialCommand::getCommandBody( byte* cmd, int length )
 {
   unsigned int i = 0;
@@ -207,7 +238,6 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
     }
     i++;
   }
-  // Serial.println("");
   
   return i;
 }
@@ -215,7 +245,7 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
 
 void SerialCommand::printChannelDebug()
 {
-  Serial.println("DEBUG INFO::");
+  Serial.println("DEBUG INFO:: CANBus Triple Mazda 0.1.1");
   
   printChannelDebug( busses[0] );
   printChannelDebug( busses[1] );
