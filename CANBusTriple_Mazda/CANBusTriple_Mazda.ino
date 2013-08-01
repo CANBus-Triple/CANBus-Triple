@@ -59,7 +59,6 @@ void setup(){
   digitalWrite( BOOT_LED, HIGH );
   delay(100);
   digitalWrite( BOOT_LED, LOW );
-  delay(100);
   
   
   // Setup CAN Busses 
@@ -86,7 +85,7 @@ void setup(){
   
   // Middleware setup
   MazdaLED::init( &messageQueue );
-  SerialCommand::init( &messageQueue, busses, 0 );
+  SerialCommand::init( &messageQueue, busses, 1 );
   
 }
 

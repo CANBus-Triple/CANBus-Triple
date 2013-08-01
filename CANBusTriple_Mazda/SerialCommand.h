@@ -18,7 +18,7 @@ Cmd    Mode   Filer PID
         4 Show higher than filter PID
 
 
-Enable / Disable reading of busses
+Enable / Disable logging of busses
 Cmd    Bus Enabled Flags
 0x04   0x7 (B111)         // Enable all 
 0x04   0x1 (B001)         // Enable only Bus 1
@@ -98,12 +98,13 @@ void SerialCommand::printMessageToSerial( Message msg )
   byte flag;
   flag = 0x1 << (msg.busId-1);
   if( !(SerialCommand::busEnabled & flag) ){
+    Serial.println("Bus disabled");
     return;
   }
   
   
   // Output to serial as json string
-  Serial.print("{\"status\":\"");
+  Serial.print("{\"packet\": {\"status\":\"");
   Serial.print( msg.busStatus,HEX);
   Serial.print("\",\"channel\":\"");
   Serial.print( busses[msg.busId-1].name );
@@ -121,7 +122,7 @@ void SerialCommand::printMessageToSerial( Message msg )
     if( i<7 ) Serial.print("\",\"");
   }
   
-  Serial.print("\"]}");
+  Serial.print("\"]}}");
   Serial.println();
   
 }
@@ -148,6 +149,7 @@ void SerialCommand::printChannelDebug(CANBus channel){
 
 void SerialCommand::processCommand(int command)
 {
+  
   switch( command ){
     case 1:
       // Debug Command
@@ -177,10 +179,11 @@ void SerialCommand::logCommand()
   
   logOutputMode = cmd[0];
   logOutputFilter = (cmd[1]<<8) + cmd[2];
-  Serial.print("Log Output set to ");
+  Serial.print("{\"event\":\"logMode\", \"mode\": ");
   Serial.print(logOutputMode);
-  Serial.print(" filter: ");
-  Serial.println(logOutputFilter, HEX);
+  Serial.print(", \"filter\": ");
+  Serial.print(logOutputFilter, HEX);
+  Serial.println("}");
   
   // Change this system to set RXB0CTRL and RXB1CTRL on each CAN Bus for efficiency
   // This may ot may not work, as the MCP2515 has to be in Configuration mode to set filters
@@ -219,8 +222,9 @@ void SerialCommand::setBusEnableFlags(){
   int bytesRead = getCommandBody( cmd, 1 );
   
   SerialCommand::busEnabled = cmd[0];
-  Serial.print("Bus filter flag set to ");
-  Serial.println( SerialCommand::busEnabled, BIN );
+  Serial.print("{\"event\":\"logBusFilter\", \"mode\": ");
+  Serial.print(SerialCommand::busEnabled, HEX);
+  Serial.println("}");
   
 }
 
