@@ -13,6 +13,7 @@ class MazdaLED : Middleware
   public:
     static void init( QueueArray<Message> *q );
     static void tick();
+    static boolean enabled;
     static void showStatusMessage(char* str, int time);
     static char lcdString[13];
     static char lcdStockString[13];
@@ -31,6 +32,7 @@ class MazdaLED : Middleware
     
 };
 
+boolean MazdaLED::enabled = EEPROM.read(0);
 unsigned long MazdaLED::updateCounter = 0;
 int MazdaLED::fastUpdateDelay = 500;
 QueueArray<Message>* MazdaLED::mainQueue;
@@ -61,6 +63,8 @@ void MazdaLED::init( QueueArray<Message> *q )
 
 void MazdaLED::tick()
 {
+  if(!enabled) return;
+  
   // New LED update CAN message for fast updates
   // check stockOverrideTimer, no need to do fast updates while stock override is active
   if( (updateCounter+fastUpdateDelay) < millis() && stockOverrideTimer < millis() ){
@@ -239,6 +243,7 @@ void MazdaLED::setStatusTime( int n ){
 
 Message MazdaLED::process(Message msg)
 {
+  if(!enabled) return msg;
   
   if( msg.frame_id == 0x28F && stockOverrideTimer < millis() ){
     // Block extras
@@ -360,6 +365,12 @@ Message MazdaLED::process(Message msg)
   sprintf(lcdString, "A:%d.%d E:%d", afrWhole, afrRemainder, egt );
   // sprintf(lcdString, "A:%d.%d K:%d", afrWhole, afrRemainder, sparkAdvance );
   // sprintf(lcdString, "A:%d.%d W:%d", afrWhole, afrRemainder, pWeight );
+  
+  
+  // Turn off extras like decimal point. Needs verification!
+  if( msg.frame_id == 0x201 ){
+    msg.dispatch = false;
+  }
   
   
   // Animation

@@ -98,7 +98,6 @@ void SerialCommand::printMessageToSerial( Message msg )
   byte flag;
   flag = 0x1 << (msg.busId-1);
   if( !(SerialCommand::busEnabled & flag) ){
-    Serial.println("Bus disabled");
     return;
   }
   
@@ -130,18 +129,19 @@ void SerialCommand::printMessageToSerial( Message msg )
 
 void SerialCommand::printChannelDebug(CANBus channel){
   
-  Serial.print( "Debugging channel " );
-  Serial.println( channel.name );
-  Serial.print(" CANCTRL: ");
+  Serial.print( "{\"event\":\"channelDebug\", \"name\":\"" );
+  Serial.print( channel.name );
+  Serial.print("\", \"canctrl\":\"");
   Serial.print( channel.readControl(), BIN );
-  Serial.print(" STATUS: ");
+  Serial.print("\", \"status\":\"");
   Serial.print( channel.readStatus(), BIN );
-  Serial.print(" ERROR: ");
-  Serial.println( channel.readRegister(EFLG), BIN );
-  Serial.print(" IntE: ");
-  Serial.println( channel.readIntE(), BIN );
-  Serial.print(" Next Available TX buffer: ");
-  Serial.println( channel.getNextTxBuffer(), DEC );
+  Serial.print("\", \"error\":\"");
+  Serial.print( channel.readRegister(EFLG), BIN );
+  Serial.print("\", \"inte\":\"");
+  Serial.print( channel.readIntE(), BIN );
+  Serial.print("\", \"nextTxBuffer\":\"");
+  Serial.print( channel.getNextTxBuffer(), DEC );
+  Serial.println("\"}");
   
 }
 
@@ -249,12 +249,10 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
 
 void SerialCommand::printChannelDebug()
 {
-  Serial.println("DEBUG INFO:: CANBus Triple Mazda 0.1.1");
-  
+  Serial.println("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.1.2\"}");
   printChannelDebug( busses[0] );
   printChannelDebug( busses[1] );
   printChannelDebug( busses[2] );
-  
 }
 
 
