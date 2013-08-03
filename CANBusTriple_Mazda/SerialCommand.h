@@ -18,7 +18,7 @@ Cmd    Mode   Filer PID
         4 Show higher than filter PID
 
 
-Enable / Disable reading of busses
+Enable / Disable logging of busses
 Cmd    Bus Enabled Flags
 0x04   0x7 (B111)         // Enable all 
 0x04   0x1 (B001)         // Enable only Bus 1
@@ -103,7 +103,7 @@ void SerialCommand::printMessageToSerial( Message msg )
   
   
   // Output to serial as json string
-  Serial.print("{\"status\":\"");
+  Serial.print("{\"packet\": {\"status\":\"");
   Serial.print( msg.busStatus,HEX);
   Serial.print("\",\"channel\":\"");
   Serial.print( busses[msg.busId-1].name );
@@ -121,7 +121,7 @@ void SerialCommand::printMessageToSerial( Message msg )
     if( i<7 ) Serial.print("\",\"");
   }
   
-  Serial.print("\"]}");
+  Serial.print("\"]}}");
   Serial.println();
   
 }
@@ -129,18 +129,19 @@ void SerialCommand::printMessageToSerial( Message msg )
 
 void SerialCommand::printChannelDebug(CANBus channel){
   
-  Serial.print( "Debugging channel " );
-  Serial.println( channel.name );
-  Serial.print(" CANCTRL: ");
+  Serial.print( "{\"event\":\"channelDebug\", \"name\":\"" );
+  Serial.print( channel.name );
+  Serial.print("\", \"canctrl\":\"");
   Serial.print( channel.readControl(), BIN );
-  Serial.print(" STATUS: ");
+  Serial.print("\", \"status\":\"");
   Serial.print( channel.readStatus(), BIN );
-  Serial.print(" ERROR: ");
-  Serial.println( channel.readRegister(EFLG), BIN );
-  Serial.print(" IntE: ");
-  Serial.println( channel.readIntE(), BIN );
-  Serial.print(" Next Available TX buffer: ");
-  Serial.println( channel.getNextTxBuffer(), DEC );
+  Serial.print("\", \"error\":\"");
+  Serial.print( channel.readRegister(EFLG), BIN );
+  Serial.print("\", \"inte\":\"");
+  Serial.print( channel.readIntE(), BIN );
+  Serial.print("\", \"nextTxBuffer\":\"");
+  Serial.print( channel.getNextTxBuffer(), DEC );
+  Serial.println("\"}");
   
 }
 
@@ -148,6 +149,7 @@ void SerialCommand::printChannelDebug(CANBus channel){
 
 void SerialCommand::processCommand(int command)
 {
+  
   switch( command ){
     case 1:
       // Debug Command
@@ -177,10 +179,11 @@ void SerialCommand::logCommand()
   
   logOutputMode = cmd[0];
   logOutputFilter = (cmd[1]<<8) + cmd[2];
-  Serial.print("Log Output set to ");
+  Serial.print("{\"event\":\"logMode\", \"mode\": ");
   Serial.print(logOutputMode);
-  Serial.print(" filter: ");
-  Serial.println(logOutputFilter, HEX);
+  Serial.print(", \"filter\": ");
+  Serial.print(logOutputFilter, HEX);
+  Serial.println("}");
   
   // Change this system to set RXB0CTRL and RXB1CTRL on each CAN Bus for efficiency
   // This may ot may not work, as the MCP2515 has to be in Configuration mode to set filters
@@ -219,8 +222,9 @@ void SerialCommand::setBusEnableFlags(){
   int bytesRead = getCommandBody( cmd, 1 );
   
   SerialCommand::busEnabled = cmd[0];
-  Serial.print("Bus filter flag set to ");
-  Serial.println( SerialCommand::busEnabled, BIN );
+  Serial.print("{\"event\":\"logBusFilter\", \"mode\": ");
+  Serial.print(SerialCommand::busEnabled, HEX);
+  Serial.println("}");
   
 }
 
@@ -245,12 +249,10 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
 
 void SerialCommand::printChannelDebug()
 {
-  Serial.println("DEBUG INFO:: CANBus Triple Mazda 0.1.1");
-  
+  Serial.println("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.1.2\"}");
   printChannelDebug( busses[0] );
   printChannelDebug( busses[1] );
   printChannelDebug( busses[2] );
-  
 }
 
 

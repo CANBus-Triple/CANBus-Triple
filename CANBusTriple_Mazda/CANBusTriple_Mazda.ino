@@ -8,6 +8,7 @@
 #include <CANBus.h>
 #include <Message.h>
 #include <QueueArray.h>
+#include <EEPROM.h>
 
 #include "WheelButton.h"
 #include "ChannelSwap.h"
@@ -59,7 +60,6 @@ void setup(){
   digitalWrite( BOOT_LED, HIGH );
   delay(100);
   digitalWrite( BOOT_LED, LOW );
-  delay(100);
   
   
   // Setup CAN Busses 
@@ -105,8 +105,22 @@ void loop() {
      case B10000000:
        MazdaLED::showStatusMessage("LEFT        ", 2000);
      break;
+     case B01000000:
+       MazdaLED::showStatusMessage("DERP        ", 2000);
+     break;
+     case B00100000:
+       MazdaLED::showStatusMessage("HERP        ", 2000);
+     break;
+     case B00010000:
+       MazdaLED::showStatusMessage("NERP        ", 2000);
+     break;
      case B1000010:
-       MazdaLED::showStatusMessage("BACK RIGHT  ", 2000);
+       MazdaLED::enabled = !MazdaLED::enabled;
+       EEPROM.write(0, MazdaLED::enabled); // For testing, proper settings in EEPROM TBD
+       if(MazdaLED::enabled)
+         MazdaLED::showStatusMessage("MazdaLED ON ", 2000);
+         else
+         MazdaLED::showStatusMessage("MazdaLED OFF", 2000);
      break;
    }
  
@@ -133,6 +147,7 @@ void loop() {
     Message msg = messageQueue.pop();
     CANBus channel = busses[msg.busId-1];
     
+    //SerialCommand::printMessageToSerial(msg);
     success = sendMessage( msg, channel );
     
     if( !success ){
@@ -252,11 +267,6 @@ void processMessage( Message msg ){
   msg = SerialCommand::process( msg );
   msg = MazdaLED::process( msg );
   msg = ChannelSwap::process( msg );
-  
-  // Break this into a middleware implementation
-  if( msg.frame_id == 0x201 ){
-    msg.dispatch = false;
-  }
   
   if( msg.dispatch == true ){
     messageQueue.push( msg );
