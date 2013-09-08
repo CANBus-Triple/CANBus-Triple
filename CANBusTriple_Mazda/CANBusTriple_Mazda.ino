@@ -10,11 +10,11 @@
 #include <QueueArray.h>
 #include <EEPROM.h>
 
+#include "Settings.h"
 #include "WheelButton.h"
 #include "ChannelSwap.h"
 #include "MazdaLED.h"
 #include "SerialCommand.h"
-
 
 #define BOOT_LED 7
 
@@ -45,6 +45,8 @@ boolean debug = false;
 
 
 void setup(){
+  
+  Settings::init();
   
   Serial.begin( 115200 );
   pinMode( BOOT_LED, OUTPUT );
@@ -115,8 +117,8 @@ void loop() {
        MazdaLED::showStatusMessage("NERP        ", 2000);
      break;
      case B1000010:
-       MazdaLED::enabled = !MazdaLED::enabled;
-       EEPROM.write(0, MazdaLED::enabled); // For testing, proper settings in EEPROM TBD
+       MazdaLED::enabled = !cbt_settings.displayEnabled;
+       Settings::save();
        if(MazdaLED::enabled)
          MazdaLED::showStatusMessage("MazdaLED ON ", 2000);
          else
