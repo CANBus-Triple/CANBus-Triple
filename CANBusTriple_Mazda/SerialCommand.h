@@ -249,10 +249,19 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
 
 void SerialCommand::printChannelDebug()
 {
-  Serial.println("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.1.2\"}");
+  Serial.println("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.2.0\"}");
   printChannelDebug( busses[0] );
   printChannelDebug( busses[1] );
   printChannelDebug( busses[2] );
+  
+  // dump eeprom
+  Serial.print( "{\"eeprom\":\"" );
+  for(int i=0; i<512; i++){
+    Serial.print( EEPROM.read(i), HEX );
+    Serial.print( ":" );
+  }
+  Serial.print("\"}");
+  
 }
 
 

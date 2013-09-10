@@ -1,13 +1,14 @@
 
 #include <avr/eeprom.h>
 
-struct pids {
-  byte txd[6];
-  byte rxf[6];
-  byte rxd[6];
-  byte mth[6];
-  char name[6];
-} pids[4];
+struct pid {
+  byte busId;
+  byte txd[8];
+  byte rxf[8];
+  byte rxd[8];
+  byte mth[8];
+  char name[8];
+};
 
 struct cbt_settings {
   byte firstboot;
@@ -18,7 +19,7 @@ struct cbt_settings {
   byte placeholder5;
   byte placeholder6;
   byte placeholder7;
-  struct pids pids;
+  struct pid pids[4];
 } cbt_settings;
 
 
@@ -26,7 +27,7 @@ class Settings
 {
   public:
    static void init();
-   static void save();
+   static void save( struct cbt_settings settings );
    static void clear();
    static void firstbootSetup();
 };
@@ -39,9 +40,9 @@ void Settings::init()
 }
 
 
-void Settings::save()
+void Settings::save( struct cbt_settings settings )
 {
-  eeprom_write_block((const void*)&cbt_settings, (void*)0, sizeof(cbt_settings));
+  eeprom_write_block((const void*)&settings, (void*)0, sizeof(settings));
 }
 
 void Settings::clear()
@@ -52,8 +53,52 @@ void Settings::clear()
 
 void Settings::firstbootSetup()
 {
-  cbt_settings.firstboot = 1;
-  cbt_settings.displayEnabled = 1;
+  Settings::clear();
+  
+  struct cbt_settings stockSettings = {
+    1, // firstboot
+    1, // displayEnabled
+    0, // placeholder2
+    0, // placeholder3
+    0, // placeholder4
+    0, // placeholder5
+    0, // placeholder6
+    0, // placeholder7
+    {
+      {
+        // EGT 
+        2,
+        { 0x07, 0xE0, 0x02, 0x01, 0x3C, 0x00, 0x00, 0x00 },   /* TXD */
+        { 0x04, 0x41, 0x05, 0x3c, 0x00, 0x00, 0x00, 0x00 },   /* RXF */
+        { 0x28, 0x01 },                                       /* RXD */
+        { 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 },   /* MTH */
+        { 0x45, 0x47, 0x54 }                                  /* NAM */
+      },
+      {
+        // AFR
+        2,
+        { 0x07, 0xDF, 0x02, 0x01, 0x34, 0x00, 0x00, 0x00 },   /* TXD */
+        { 0x04, 0x41, 0x45, 0x34, 0x00, 0x00, 0x00, 0x00 },   /* RXF */
+        { 0x28, 0x08 },                                       /* RXD */
+        { 0x05, 0xB9, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00 },   /* MTH */
+        { 0x41, 0x46, 0x00 }                                  /* NAM */
+      },
+      {},
+      {}
+    }
+  };
+  
+  Settings::save(stockSettings);
+  
+  // Slow flash to show first boot successful
+  for(int i=0;i<10;i++){
+    digitalWrite( 7, HIGH );
+    delay(500);
+    digitalWrite( 7, LOW );
+    delay(500);
+  }
+  
+  
 }
 
 

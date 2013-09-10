@@ -11,7 +11,7 @@ class MazdaLED : Middleware
     static void pushNewMessage();
     static int fastUpdateDelay;
   public:
-    static void init( QueueArray<Message> *q );
+    static void init( QueueArray<Message> *q, byte enabled );
     static void tick();
     static boolean enabled;
     static void showStatusMessage(char* str, int time);
@@ -25,10 +25,7 @@ class MazdaLED : Middleware
     static unsigned long animationCounter;
     static Message process( Message msg );
     static char* currentLcdString();
-    static void knockServiceCall();
-    static void egtServiceCall();
-    static void advanceServiceCall();
-    static void pWeightServiceCall();
+    static void sendServiceCalls( struct pid pid[], int length );
     
 };
 
@@ -56,22 +53,15 @@ byte egtSettings[2][3];
 
 
 
-void MazdaLED::init( QueueArray<Message> *q )
+void MazdaLED::init( QueueArray<Message> *q, byte enabled )
 {
   mainQueue = q;
-  
-  byte egtSettings[5][6] = {
-    /* TXD */ { 0x07, 0xE0, 0x01, 0x3C, 0x00, 0x00 },
-    /* RXF */ { 0x04, 0x41, 0x05, 0x3c, 0x00, 0x00 },
-    /* RXD */ { 0x28, 0x01 },
-    /* MTH */ { 0x00, 0x01, 0x00, 0x01, 0x00, 0x00 },
-    /* NAM */ { 0x45, 0x47, 0x54 },
-  };
-  
+  MazdaLED::enabled = (enabled == 1);
 }
 
 void MazdaLED::tick()
 {
+   
   if(!enabled) return;
   
   // New LED update CAN message for fast updates
@@ -81,11 +71,8 @@ void MazdaLED::tick()
     updateCounter = millis();
   }
   
-  // Send knock retard query
-  // if( (millis() % 100) < 1 ) MazdaLED::knockServiceCall();
-  if( (millis() % 100) < 1 ) MazdaLED::egtServiceCall();
-  // if( (millis() % 100) < 1 ) MazdaLED::advanceServiceCall();
-  // if( (millis() % 100) < 1 ) MazdaLED::pWeightServiceCall();
+  // Send service calls every ~100ms
+  if( (millis() % 100) < 1 ) MazdaLED::sendServiceCalls( cbt_settings.pids, 4 );
   
 }
 
@@ -96,86 +83,33 @@ void MazdaLED::showStatusMessage(char* str, int time){
 }
 
 
-void MazdaLED::knockServiceCall(){
-  
-  // NOT WORKING
-  
-  Message msg;
-  msg.busId = 2;
-  msg.frame_id = 0x7E0;     // 02 01 0D 00 00 00 00 00
-  msg.frame_data[0] = 0x03;
-  msg.frame_data[1] = 0x22;
-  msg.frame_data[2] = 0x17;
-  msg.frame_data[3] = 0x46;
-  msg.frame_data[4] = 0x00;
-  msg.frame_data[5] = 0x00;
-  msg.frame_data[6] = 0x00;
-  msg.frame_data[7] = 0x00;
-  msg.length = 8;
-  msg.dispatch = true;
-  mainQueue->push(msg);
-  
-}
 
-void MazdaLED::advanceServiceCall(){
+void MazdaLED::sendServiceCalls( struct pid pid[], int length ){
   
-  Message msg;
-  msg.busId = 2;
-  msg.frame_id = 0x7E0;     // 02 01 0D 00 00 00 00 00
-  msg.frame_data[0] = 0x03;
-  msg.frame_data[1] = 0x22;
-  msg.frame_data[2] = 0x11;
-  msg.frame_data[3] = 0x6B;
-  msg.frame_data[4] = 0x00;
-  msg.frame_data[5] = 0x00;
-  msg.frame_data[6] = 0x00;
-  msg.frame_data[7] = 0x00;
-  msg.length = 8;
-  msg.dispatch = true;
-  mainQueue->push(msg);
-  
-}
-
-void MazdaLED::egtServiceCall(){
-  
-  Message msg;
-  msg.busId = 2;
-  msg.frame_id = (egtSettings[0][0] << 8) + egtSettings[0][1];
-  
-  int i = 2;
-  while( egtSettings[0][i] != 0 ){
-    msg.frame_data[1] = egtSettings[0][i];
-    i++;
+  for( int i=0; i<length; i++ ){
+    
+    if( pid[i].txd[0] == 0 && pid[i].txd[1] == 0 )
+      continue;
+    
+    Message msg;
+    msg.busId = pid[i].busId;
+    msg.frame_id = (pid[i].txd[0] << 8) + pid[i].txd[1];
+    
+    for(int ii = 0; ii <= 5; ii++ )
+      msg.frame_data[ii] = pid[i].txd[ii+2];
+    
+    msg.length = 8;
+    msg.dispatch = true;
+    mainQueue->push(msg);
+    
+    /*
+    Serial.print("Service call sent pid settings storage location:");
+    Serial.println(i);
+    SerialCommand::printMessageToSerial( msg );
+    */
   }
   
-  // Set length
-  msg.frame_data[0] = i-2;
-  
-  msg.length = 8;
-  msg.dispatch = true;
-  mainQueue->push(msg);
-  
 }
-
-void MazdaLED::pWeightServiceCall(){
-  
-  Message msg;
-  msg.busId = 2;
-  msg.frame_id = 0x737;
-  msg.frame_data[0] = 0x03;
-  msg.frame_data[1] = 0x22;
-  msg.frame_data[2] = 0x59;
-  msg.frame_data[3] = 0x6A;
-  msg.frame_data[4] = 0x00;
-  msg.frame_data[5] = 0x00;
-  msg.frame_data[6] = 0x00;
-  msg.frame_data[7] = 0x00;
-  msg.length = 8;
-  msg.dispatch = true;
-  mainQueue->push(msg);
-  
-}
-
 
 
 
@@ -333,7 +267,7 @@ Message MazdaLED::process(Message msg)
   
   
   // New Passive AFR value
-  if( msg.frame_id == 0x0134 ){
+  if( msg.frame_id == 0x0134 ){// WRONG PID, should be looking for a responce from ECU PID 7E8
     sprintf(lcdString, "            ");
     
     byte A = msg.frame_data[3];
@@ -345,26 +279,11 @@ Message MazdaLED::process(Message msg)
     
   }
   
-  if( msg.frame_id == 0x7E8 /* && msg.frame_id[]*/ ){
-    knockRetard = (msg.frame_data[3]*7)/2;
-  }
-  
   if( msg.frame_id == 0x7E8 && msg.frame_data[2] == 0x3C ){
     egt = ((msg.frame_data[3]*256) + msg.frame_data[4] ) / 10 - 40;
   }
   
-  if( msg.frame_id == 0x7E8 && msg.frame_data[2] == 0x11 && msg.frame_data[3] == 0x6B ){
-    sparkAdvance = (msg.frame_data[5]*0x0A)/4;
-  }
-  
-  if( msg.frame_id == 0x73F && msg.frame_data[2] == 0x59 && msg.frame_data[3] == 0x6A ){
-    pWeight = (((msg.frame_data[4]*256) + msg.frame_data[5]) * 0xB)/0x64;
-  }
-  
-  // sprintf(lcdString, "A:%d.%d K:%d", afrWhole, afrRemainder, knockRetard );
   sprintf(lcdString, "A:%d.%d E:%d", afrWhole, afrRemainder, egt );
-  // sprintf(lcdString, "A:%d.%d K:%d", afrWhole, afrRemainder, sparkAdvance );
-  // sprintf(lcdString, "A:%d.%d W:%d", afrWhole, afrRemainder, pWeight );
   
   
   // Turn off extras like decimal point. Needs verification!
