@@ -3,6 +3,8 @@
 
 struct pid {
   byte busId;
+  byte settings; // for variables like dispatch
+  unsigned int value;
   byte txd[8];
   byte rxf[8];
   byte rxd[8];
@@ -11,15 +13,15 @@ struct pid {
 };
 
 struct cbt_settings {
-  byte firstboot;
   byte displayEnabled;
+  byte firstboot;
   byte placeholder2;
   byte placeholder3;
   byte placeholder4;
   byte placeholder5;
   byte placeholder6;
   byte placeholder7;
-  struct pid pids[4];
+  struct pid pids[8];
 } cbt_settings;
 
 
@@ -27,10 +29,14 @@ class Settings
 {
   public:
    static void init();
-   static void save( struct cbt_settings settings );
+   static void save( struct cbt_settings *settings );
    static void clear();
    static void firstbootSetup();
+   static int pidLength;
 };
+
+// Static int for number of PIDs stored in settings
+int Settings::pidLength = 8;
 
 void Settings::init()
 {
@@ -40,9 +46,9 @@ void Settings::init()
 }
 
 
-void Settings::save( struct cbt_settings settings )
+void Settings::save( struct cbt_settings *settings )
 {
-  eeprom_write_block((const void*)&settings, (void*)0, sizeof(settings));
+  eeprom_write_block((const void*)settings, (void*)0, sizeof(cbt_settings));
 }
 
 void Settings::clear()
@@ -56,8 +62,8 @@ void Settings::firstbootSetup()
   Settings::clear();
   
   struct cbt_settings stockSettings = {
-    1, // firstboot
     1, // displayEnabled
+    1, // firstboot
     0, // placeholder2
     0, // placeholder3
     0, // placeholder4
@@ -68,30 +74,39 @@ void Settings::firstbootSetup()
       {
         // EGT 
         2,
-        { 0x07, 0xE0, 0x02, 0x01, 0x3C, 0x00, 0x00, 0x00 },   /* TXD */
-        { 0x04, 0x41, 0x05, 0x3c, 0x00, 0x00, 0x00, 0x00 },   /* RXF */
-        { 0x28, 0x01 },                                       /* RXD */
-        { 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 },   /* MTH */
+        0,
+        666,
+        { 0x07, 0xE0, 0x01, 0x3C, 0x00, 0x00, 0x00, 0x00 },   /* TXD */
+        { 0x02, 0x41, 0x03, 0x3c, 0x00, 0x00, 0x00, 0x00 },   /* RXF */
+        { 0x28, 0x10 },                                       /* RXD */
+        { 0x00, 0x01, 0x00, 0x0A, 0xFF, 0xD8 },               /* MTH */
         { 0x45, 0x47, 0x54 }                                  /* NAM */
       },
       {
         // AFR
         2,
-        { 0x07, 0xDF, 0x02, 0x01, 0x34, 0x00, 0x00, 0x00 },   /* TXD */
-        { 0x04, 0x41, 0x45, 0x34, 0x00, 0x00, 0x00, 0x00 },   /* RXF */
-        { 0x28, 0x08 },                                       /* RXD */
-        { 0x05, 0xB9, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00 },   /* MTH */
+        0,
+        66,
+        { 0x07, 0xE0, 0x01, 0x34, 0x00, 0x00, 0x00, 0x00 },   /* TXD */
+        { 0x02, 0x41, 0x03, 0x34, 0x00, 0x00, 0x00, 0x00 },   /* RXF */
+        { 0x28, 0x10 },                                       /* RXD */
+        //         { 0x00, 0x0F, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00 },   /* MTH */
+        { 0x00, 0x0F, 0x01, 0x48, 0x00, 0x00, 0x00, 0x00 },   /* MTH */
         { 0x41, 0x46, 0x00 }                                  /* NAM */
       },
+      {},
+      {},
+      {},
+      {},
       {},
       {}
     }
   };
   
-  Settings::save(stockSettings);
+  Settings::save(&stockSettings);
   
   // Slow flash to show first boot successful
-  for(int i=0;i<10;i++){
+  for(int i=0;i<6;i++){
     digitalWrite( 7, HIGH );
     delay(500);
     digitalWrite( 7, LOW );

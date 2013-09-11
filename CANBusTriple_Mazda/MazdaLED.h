@@ -25,7 +25,7 @@ class MazdaLED : Middleware
     static unsigned long animationCounter;
     static Message process( Message msg );
     static char* currentLcdString();
-    static void sendServiceCalls( struct pid pid[], int length );
+    static void sendServiceCalls( struct pid pid[] );
     
 };
 
@@ -72,7 +72,7 @@ void MazdaLED::tick()
   }
   
   // Send service calls every ~100ms
-  if( (millis() % 100) < 1 ) MazdaLED::sendServiceCalls( cbt_settings.pids, 4 );
+  if( (millis() % 100) < 1 ) MazdaLED::sendServiceCalls( cbt_settings.pids );
   
 }
 
@@ -84,19 +84,25 @@ void MazdaLED::showStatusMessage(char* str, int time){
 
 
 
-void MazdaLED::sendServiceCalls( struct pid pid[], int length ){
+void MazdaLED::sendServiceCalls( struct pid pid[] ){
   
-  for( int i=0; i<length; i++ ){
+  for( int i=0; i<Settings::pidLength; i++ ){
     
-    if( pid[i].txd[0] == 0 && pid[i].txd[1] == 0 )
+    // if( pid[i].txd[0] == 0 && pid[i].txd[1] == 0 ) // Aborts if we have no PID
+    if( pid[i].txd[2] == 0 )                          // Aborts if we have no service call data. Allows us to match on passive PIDs
       continue;
     
     Message msg;
     msg.busId = pid[i].busId;
     msg.frame_id = (pid[i].txd[0] << 8) + pid[i].txd[1];
     
-    for(int ii = 0; ii <= 5; ii++ )
-      msg.frame_data[ii] = pid[i].txd[ii+2];
+    int ii = 0;
+    while( ii <= 5 && pid[i].txd[ii+2] != 0 ){
+      msg.frame_data[ii+1] = pid[i].txd[ii+2];
+      ii++;
+    }
+      
+    msg.frame_data[0] = ii;
     
     msg.length = 8;
     msg.dispatch = true;
@@ -107,6 +113,7 @@ void MazdaLED::sendServiceCalls( struct pid pid[], int length ){
     Serial.println(i);
     SerialCommand::printMessageToSerial( msg );
     */
+    
   }
   
 }
@@ -265,26 +272,77 @@ Message MazdaLED::process(Message msg)
     
   }
   
-  
-  // New Passive AFR value
-  if( msg.frame_id == 0x0134 ){// WRONG PID, should be looking for a responce from ECU PID 7E8
-    sprintf(lcdString, "            ");
+  // Process service call responses
+  for( int i=0; i<Settings::pidLength; i++ ){
     
-    byte A = msg.frame_data[3];
-    byte B = msg.frame_data[4];
-    afr = (A*256+B) / 32768 ; // * 14.7;
+    struct pid *pid = &cbt_settings.pids[i];
+    if( pid->txd[0] == 0 && pid->txd[1] == 0 )
+      continue;
     
-    afrWhole = afr/1000;
-    afrRemainder = (afr % 1000)/100;
+    // If the PID returned is 8 higher than the request pid we've recieved a response
+    if(msg.frame_id == ((pid->txd[0]<<8)+pid->txd[1]+0x08) ){
+      
+      // Match RXD
+      int rxfi = 0;
+      boolean match = true;
+      while( rxfi <= 6 && pid->rxf[rxfi] ){
+        if( msg.frame_data[ pid->rxf[rxfi]-1 ] != pid->rxf[rxfi+1]){
+          match = false;
+          break;
+        };
+        rxfi += 2;
+      }
+      
+      if(match){
+        /*
+        Serial.print("Got response packet for PID ");
+        Serial.println( pid.name );
+        SerialCommand::printMessageToSerial( msg );
+        */
+        int start = (pid->rxd[0]/8) - 2; // Remove two bytes of length to compensate for the fact PID is not in this array. For ScanGauge compat
+        byte A = msg.frame_data[start];
+        byte B;
+        
+        if( pid->rxd[1] == 16 )
+          B = msg.frame_data[start+1];
+        else
+          B = 0;
+        
+        // Do math
+        float base;
+        if( pid->rxd[1] == 16 )
+          base = (A * 0xFF) + B;
+        else
+          base = A;
+          
+        /*
+        Serial.println(A);
+        Serial.println(B);
+        */
+        
+        int mult = (pid->mth[0] << 8) + pid->mth[1];
+        int div  = (pid->mth[2] << 8) + pid->mth[3];
+        int add  = (pid->mth[4] << 8) + pid->mth[5];
+        
+        if(mult) base = base * mult;
+        if(div) base  = base / div;
+        if(add) base  = base + add;
+        
+        // Serial.println( base );
+        
+        pid->value = base;
+        
+      }
+      
+      
+      
+      
+    }
     
   }
   
-  if( msg.frame_id == 0x7E8 && msg.frame_data[2] == 0x3C ){
-    egt = ((msg.frame_data[3]*256) + msg.frame_data[4] ) / 10 - 40;
-  }
   
-  sprintf(lcdString, "A:%d.%d E:%d", afrWhole, afrRemainder, egt );
-  
+  sprintf(lcdString, "A:%d E:%d",  cbt_settings.pids[1].value, cbt_settings.pids[0].value );
   
   // Turn off extras like decimal point. Needs verification!
   if( msg.frame_id == 0x201 ){
@@ -299,7 +357,5 @@ Message MazdaLED::process(Message msg)
    
   return msg;
 }
-
-
 
 

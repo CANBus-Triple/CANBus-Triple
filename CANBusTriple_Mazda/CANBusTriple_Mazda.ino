@@ -17,7 +17,6 @@
 #include "MazdaLED.h"
 
 #define BOOT_LED 7
-#define CLEAR_PIN 10
 
 #define CAN1INT 0
 #define CAN1SELECT 0
@@ -49,18 +48,10 @@ boolean debug = false;
 void setup(){
   
   Serial.begin( 115200 );
-  pinMode( CLEAR_PIN, INPUT);
   pinMode( BOOT_LED, OUTPUT );
   
-  if( 0 /*|| digitalRead(CLEAR_PIN)*/ ){
-    Settings::clear();
-    while(1){
-      digitalWrite( BOOT_LED, HIGH );
-      delay(50);
-      digitalWrite( BOOT_LED, LOW );
-      delay(50);
-    }
-  }
+  // Reset to stock?
+  Settings::firstbootSetup();
   
   Settings::init();
   
@@ -131,7 +122,7 @@ void loop() {
      break;
      case B1000010:
        MazdaLED::enabled = !cbt_settings.displayEnabled;
-       Settings::save(cbt_settings);
+       Settings::save(&cbt_settings);
        if(MazdaLED::enabled)
          MazdaLED::showStatusMessage("MazdaLED ON ", 2000);
          else
