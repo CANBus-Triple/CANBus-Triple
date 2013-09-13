@@ -286,7 +286,7 @@ Message MazdaLED::process(Message msg)
       int rxfi = 0;
       boolean match = true;
       while( rxfi <= 6 && pid->rxf[rxfi] ){
-        if( msg.frame_data[ pid->rxf[rxfi]-1 ] != pid->rxf[rxfi+1]){
+        if( msg.frame_data[ pid->rxf[rxfi]-3 ] != pid->rxf[rxfi+1]){ // use rxf -3 as scangauge is 1 indexed and assumes 2 byes of pid data 
           match = false;
           break;
         };
@@ -294,12 +294,14 @@ Message MazdaLED::process(Message msg)
       }
       
       if(match){
+        
         /*
         Serial.print("Got response packet for PID ");
-        Serial.println( pid.name );
+        Serial.println( pid->name );
         SerialCommand::printMessageToSerial( msg );
         */
-        int start = (pid->rxd[0]/8) - 2; // Remove two bytes of length to compensate for the fact PID is not in this array. For ScanGauge compat
+        
+        byte start = (pid->rxd[0]/8) - 2; // Remove two bytes of length to compensate for the fact PID is not in this array. For ScanGauge compat
         byte A = msg.frame_data[start];
         byte B;
         
@@ -309,26 +311,28 @@ Message MazdaLED::process(Message msg)
           B = 0;
         
         // Do math
-        float base;
+        unsigned int base;
+        base = 0;
         if( pid->rxd[1] == 16 )
-          base = (A * 0xFF) + B;
+          base = (A << 8) + B;
         else
           base = A;
-          
+        
         /*
         Serial.println(A);
         Serial.println(B);
         */
         
-        int mult = (pid->mth[0] << 8) + pid->mth[1];
-        int div  = (pid->mth[2] << 8) + pid->mth[3];
-        int add  = (pid->mth[4] << 8) + pid->mth[5];
+        unsigned int mult = (pid->mth[0] << 8) + pid->mth[1];
+        unsigned int div  = (pid->mth[2] << 8) + pid->mth[3];
+        unsigned int add  = (pid->mth[4] << 8) + pid->mth[5];
         
-        if(mult) base = base * mult;
-        if(div) base  = base / div;
-        if(add) base  = base + add;
+        if(div == 0) div = 1;
         
-        // Serial.println( base );
+        float divResult;
+        divResult = (float)base / (float)div;\
+        divResult = divResult * mult;
+        base = divResult + add;
         
         pid->value = base;
         

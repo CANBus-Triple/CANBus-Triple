@@ -2,7 +2,11 @@
 /*
 // Serial Commands
 
-0x01 Print Debug to Serial
+0x01      System and settings
+0x01 0x01 Print Debug to Serial
+0x01 0x02 Dump eeprom value
+0x01 0x03 read and save eeprom
+0x01 0x04 restore eeprom to stock values
 
 Send CAN frame
 Cmd    Bus id  PID    data 0-7                  length
@@ -49,6 +53,8 @@ class SerialCommand : Middleware
     static int  getCommandBody( byte* cmd, int length );
     static void getAndSend();
     static void printChannelDebug();
+    static void settingsCall();
+    static void dumpEeprom();
     static void logCommand();
     static void setBusEnableFlags();
     static byte busEnabled;
@@ -152,8 +158,7 @@ void SerialCommand::processCommand(int command)
   
   switch( command ){
     case 1:
-      // Debug Command
-      printChannelDebug();
+      settingsCall();
     break;
     case 2:
       // Send command
@@ -169,6 +174,32 @@ void SerialCommand::processCommand(int command)
       setBusEnableFlags();
     break;
   }
+}
+
+
+void SerialCommand::settingsCall()
+{
+
+  byte cmd[1];
+  int bytesRead = getCommandBody( cmd, 1 );
+  
+  // Debug Command
+  switch( cmd[0] ){
+    case 2:
+      dumpEeprom();
+    break;
+    case 3:
+      // TODO Read from input and store settings
+    break;
+    case 4:
+      Settings::firstbootSetup();
+    break;
+    default:
+      printChannelDebug();
+    break;
+  }
+  
+  
 }
 
 
@@ -253,15 +284,17 @@ void SerialCommand::printChannelDebug()
   printChannelDebug( busses[0] );
   printChannelDebug( busses[1] );
   printChannelDebug( busses[2] );
-  
+}
+
+void SerialCommand::dumpEeprom()
+{
   // dump eeprom
-  Serial.print( "{\"eeprom\":\"" );
+  Serial.print( "{\"event\":\"settings\", \"eeprom\":\"" );
   for(int i=0; i<512; i++){
     Serial.print( EEPROM.read(i), HEX );
     Serial.print( ":" );
   }
   Serial.print("\"}");
-  
 }
 
 

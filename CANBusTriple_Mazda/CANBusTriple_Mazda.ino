@@ -51,7 +51,7 @@ void setup(){
   pinMode( BOOT_LED, OUTPUT );
   
   // Reset to stock?
-  Settings::firstbootSetup();
+  // Settings::firstbootSetup();
   
   Settings::init();
   

@@ -6,9 +6,9 @@ struct pid {
   byte settings; // for variables like dispatch
   unsigned int value;
   byte txd[8];
-  byte rxf[8];
-  byte rxd[8];
-  byte mth[8];
+  byte rxf[6];
+  byte rxd[2];
+  byte mth[6];
   char name[8];
 };
 
@@ -59,6 +59,7 @@ void Settings::clear()
 
 void Settings::firstbootSetup()
 {
+  Serial.println("Stock reset requested...");
   Settings::clear();
   
   struct cbt_settings stockSettings = {
@@ -77,7 +78,8 @@ void Settings::firstbootSetup()
         0,
         666,
         { 0x07, 0xE0, 0x01, 0x3C, 0x00, 0x00, 0x00, 0x00 },   /* TXD */
-        { 0x02, 0x41, 0x03, 0x3c, 0x00, 0x00, 0x00, 0x00 },   /* RXF */
+        // { 0x00, 0x00, 0x01, 0x3C, 0x00, 0x00, 0x00, 0x00 },   /* TXD */
+        { 0x04, 0x41, 0x05, 0x3c, 0x00, 0x00 },   /* RXF */
         { 0x28, 0x10 },                                       /* RXD */
         { 0x00, 0x01, 0x00, 0x0A, 0xFF, 0xD8 },               /* MTH */
         { 0x45, 0x47, 0x54 }                                  /* NAM */
@@ -88,10 +90,11 @@ void Settings::firstbootSetup()
         0,
         66,
         { 0x07, 0xE0, 0x01, 0x34, 0x00, 0x00, 0x00, 0x00 },   /* TXD */
-        { 0x02, 0x41, 0x03, 0x34, 0x00, 0x00, 0x00, 0x00 },   /* RXF */
+        { 0x04, 0x41, 0x05, 0x34, 0x00, 0x00 },   /* RXF */
         { 0x28, 0x10 },                                       /* RXD */
-        //         { 0x00, 0x0F, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00 },   /* MTH */
-        { 0x00, 0x0F, 0x01, 0x48, 0x00, 0x00, 0x00, 0x00 },   /* MTH */
+        // { 0x00, 0x0F, 0x80, 0x00, 0x00, 0x00 },               /* MTH */
+        // { 0x00, 0x0F, 0x83, 0xD7, 0x00, 0x00 },               /* MTH */ // ?? Calibrated
+        { 0x00, 0x0F, 0x01, 0x52, 0x00, 0x00 },   /* MTH */
         { 0x41, 0x46, 0x00 }                                  /* NAM */
       },
       {},
@@ -104,6 +107,8 @@ void Settings::firstbootSetup()
   };
   
   Settings::save(&stockSettings);
+  
+  Serial.println("Stock settings restored.");
   
   // Slow flash to show first boot successful
   for(int i=0;i<6;i++){
