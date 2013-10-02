@@ -1,86 +1,111 @@
-
-
 int arrowButtonIn = A0;
 int infoButtonIn = A1;
 
 // Button states
-#define ARROW_BUTTON_NONE 9
-#define ARROW_BUTTON_ENTER 7
+#define ARROW_BUTTON_NONE 10
+#define ARROW_BUTTON_ENTER 8
 #define ARROW_BUTTON_UP 1
 #define ARROW_BUTTON_DOWN 2
-#define ARROW_BUTTON_LEFT 3
-#define ARROW_BUTTON_RIGHT 5
-#define INFO_BUTTON_NONE 10
+#define ARROW_BUTTON_LEFT 4
+#define ARROW_BUTTON_RIGHT 6
+#define INFO_BUTTON_NONE 12
 #define INFO_BUTTON_NAV 1
 #define INFO_BUTTON_BACK 2
-#define INFO_BUTTON_INFO 3
+#define INFO_BUTTON_INFO 4
 
+//Button codes
+#define B_ARROW_NONE   B00000000
+#define B_ARROW_LEFT   B10000000
+#define B_ARROW_RIGHT  B01000000
+#define B_ARROW_UP     B00100000
+#define B_ARROW_DOWN   B00010000
+#define B_ARROW_ENTER  B00001000
+#define B_INFO_NONE    B00000000
+#define B_INFO_NAV     B00000100
+#define B_INFO_BACK    B00000010
+#define B_INFO_INFO    B00000001
+
+// Button debouncing 
+#define BTN_DEBOUNCE_TIME 85
 
 
 /*
 *  Returns a byte indicating wheel buttons that are down
-*  
-*/
+ *  
+ */
 
 class WheelButton {
-  public:
-    static byte getButtonDown();
-    static boolean arrowButtonIsDown;
-    static boolean infoButtonIsDown;
-  private:
+public:
+  static byte getButtonDown();
+  static boolean arrowButtonIsDown;
+  static boolean infoButtonIsDown;
   
+  static byte btnState;            // Stores the current button reading
+  static long lastDebounceTime;    // The last time the output was toggled
+private:
+
 };
 
 
+// Setup default values
 boolean WheelButton::arrowButtonIsDown = false;
 boolean WheelButton::infoButtonIsDown = false;
+long WheelButton::lastDebounceTime = 0;
+byte WheelButton::btnState = 0;
 
 
-
-byte WheelButton::getButtonDown(){
+byte WheelButton::getButtonDown()
+{
+  int btn = analogRead(arrowButtonIn) / 80;
+  byte currentReading = 0;
+  static byte lclBtnState = 0;
   
-  int aBtn = analogRead(arrowButtonIn) / 100;
-  byte out = 0;
-  
-  switch(aBtn){
+  switch(btn){
     case ARROW_BUTTON_NONE:
-      
-    break;
+      break;
     case ARROW_BUTTON_LEFT:
-      out += B10000000;
-    break;
+      currentReading += B_ARROW_LEFT;
+      break;
     case ARROW_BUTTON_RIGHT:
-      out += B01000000;
-    break;
+      currentReading += B_ARROW_RIGHT;
+      break;
     case ARROW_BUTTON_UP:
-      out += B00100000;
-    break;
+      currentReading += B_ARROW_UP;
+      break;
     case ARROW_BUTTON_DOWN:
-      out += B00010000;
-    break;
+      currentReading += B_ARROW_DOWN;
+      break;
     case ARROW_BUTTON_ENTER:
-      out += B00001000;
-    break;
+      currentReading += B_ARROW_ENTER;
+      break;
   }
-  
-  int iBtn = analogRead(infoButtonIn) / 100;
-  switch( iBtn ){
+
+  btn = analogRead(infoButtonIn) / 80;
+  switch( btn ){
     case INFO_BUTTON_NONE:
-      
-    break;
+      break;
     case INFO_BUTTON_NAV:
-      out += B00000100;
-    break;
+      currentReading += B_INFO_NAV;
+      break;
     case INFO_BUTTON_BACK:
-      out += B00000010;
-    break;
+      currentReading += B_INFO_BACK;
+      break;
     case INFO_BUTTON_INFO:
-      out += B0000001;
-    break;
+      currentReading += B_INFO_INFO;
+      break;
   }
   
+  // Lets do some debouncing
+  if (currentReading != lclBtnState)
+  {
+    lastDebounceTime = millis();
+    lclBtnState = currentReading;
+  }
   
-  return out;
+  // if the button is still pressed after our predefined wait time
+  // then it's the button we want to press.
+  if ((millis() - lastDebounceTime) > BTN_DEBOUNCE_TIME && btnState != lclBtnState)
+    btnState = lclBtnState;
+  
+  return btnState;
 }
-
-

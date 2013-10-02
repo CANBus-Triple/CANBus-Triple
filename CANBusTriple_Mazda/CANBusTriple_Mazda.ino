@@ -47,11 +47,8 @@ boolean debug = false;
 
 void setup(){
   
-  Serial.begin( 115200 );
+  Serial.begin( 57600 );
   pinMode( BOOT_LED, OUTPUT );
-  
-  // Reset to stock?
-  // Settings::firstbootSetup();
   
   Settings::init();
   
@@ -121,12 +118,12 @@ void loop() {
        MazdaLED::showStatusMessage("NERP        ", 2000);
      break;
      case B1000010:
-       MazdaLED::enabled = !cbt_settings.displayEnabled;
-       Settings::save(&cbt_settings);
+       cbt_settings.displayEnabled = MazdaLED::enabled = !MazdaLED::enabled;
+       // Settings::save(&cbt_settings);
+       EEPROM.write( offsetof(struct cbt_settings, displayEnabled), cbt_settings.displayEnabled);
+       
        if(MazdaLED::enabled)
          MazdaLED::showStatusMessage("MazdaLED ON ", 2000);
-         else
-         MazdaLED::showStatusMessage("MazdaLED OFF", 2000);
      break;
    }
  
@@ -163,28 +160,6 @@ void loop() {
     }
     
   }
-  
-}
-
-
-void sendTestFrame(){
-  
-  Message msg;
-  msg.busId = 2;
-  msg.frame_id = 0x7DF;     // 02 01 0D 00 00 00 00 00
-  msg.frame_data[0] = 0x02;
-  msg.frame_data[1] = 0x01;
-  msg.frame_data[2] = 0x0D;
-  msg.frame_data[3] = 0x00;
-  msg.frame_data[4] = 0x00;
-  msg.frame_data[5] = 0x00;
-  msg.frame_data[6] = 0x00;
-  msg.frame_data[7] = 0x00;
-  msg.length = 8;
-  msg.dispatch = true;
-  messageQueue.push(msg);
-  
-  Serial.println("Sent a 0x7DF");
   
 }
 

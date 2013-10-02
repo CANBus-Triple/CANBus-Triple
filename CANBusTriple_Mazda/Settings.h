@@ -3,7 +3,7 @@
 
 struct pid {
   byte busId;
-  byte settings; // for variables like dispatch
+  byte settings; // unused, unused, unused, unused, unused, unused, unused, Float flag
   unsigned int value;
   byte txd[8];
   byte rxf[6];
@@ -22,6 +22,7 @@ struct cbt_settings {
   byte placeholder6;
   byte placeholder7;
   struct pid pids[8];
+  byte padding[32];
 } cbt_settings;
 
 
@@ -32,16 +33,15 @@ class Settings
    static void save( struct cbt_settings *settings );
    static void clear();
    static void firstbootSetup();
-   static int pidLength;
+   const static int pidLength = 8;
 };
 
-// Static int for number of PIDs stored in settings
-int Settings::pidLength = 8;
 
 void Settings::init()
 {
+  memset(&cbt_settings, 0, sizeof(cbt_settings));
   eeprom_read_block((void*)&cbt_settings, (void*)0, sizeof(cbt_settings));
-  if( cbt_settings.firstboot == 0 )
+  if( cbt_settings.firstboot == 0 || cbt_settings.firstboot == 0xFF )
     Settings::firstbootSetup();
 }
 
@@ -51,6 +51,7 @@ void Settings::save( struct cbt_settings *settings )
   eeprom_write_block((const void*)settings, (void*)0, sizeof(cbt_settings));
 }
 
+
 void Settings::clear()
 {
   for (int i = 0; i < 512; i++)
@@ -59,7 +60,6 @@ void Settings::clear()
 
 void Settings::firstbootSetup()
 {
-  Serial.println("Stock reset requested...");
   Settings::clear();
   
   struct cbt_settings stockSettings = {
@@ -75,11 +75,10 @@ void Settings::firstbootSetup()
       {
         // EGT 
         2,
-        0,
-        666,
+        B00000000, // Setting flags
+        000, // Value
         { 0x07, 0xE0, 0x01, 0x3C, 0x00, 0x00, 0x00, 0x00 },   /* TXD */
-        // { 0x00, 0x00, 0x01, 0x3C, 0x00, 0x00, 0x00, 0x00 },   /* TXD */
-        { 0x04, 0x41, 0x05, 0x3c, 0x00, 0x00 },   /* RXF */
+        { 0x04, 0x41, 0x05, 0x3c, 0x00, 0x00 },               /* RXF */
         { 0x28, 0x10 },                                       /* RXD */
         { 0x00, 0x01, 0x00, 0x0A, 0xFF, 0xD8 },               /* MTH */
         { 0x45, 0x47, 0x54 }                                  /* NAM */
@@ -87,8 +86,8 @@ void Settings::firstbootSetup()
       {
         // AFR
         2,
-        0,
-        66,
+        B00000001, // Setting flags
+        000, // Value
         { 0x07, 0xE0, 0x01, 0x34, 0x00, 0x00, 0x00, 0x00 },   /* TXD */
         { 0x04, 0x41, 0x05, 0x34, 0x00, 0x00 },   /* RXF */
         { 0x28, 0x10 },                                       /* RXD */
@@ -103,12 +102,13 @@ void Settings::firstbootSetup()
       {},
       {},
       {}
-    }
+    },
+    { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF } // padding for future changes
   };
   
   Settings::save(&stockSettings);
-  
-  Serial.println("Stock settings restored.");
+  Settings::init();
+  Serial.println( "{\"event\":\"eepromReset\", \"result\":\"success\"}" );
   
   // Slow flash to show first boot successful
   for(int i=0;i<6;i++){

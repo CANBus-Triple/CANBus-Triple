@@ -47,19 +47,26 @@ class SerialCommand : Middleware
     static Message process( Message msg );
     static void printMessageToSerial(Message msg);
   private:
+    static int freeRam();
     static QueueArray<Message>* mainQueue;
     static void printChannelDebug(CANBus channel);
     static void processCommand(int command);
     static int  getCommandBody( byte* cmd, int length );
+    static void clearBuffer();
     static void getAndSend();
     static void printChannelDebug();
     static void settingsCall();
     static void dumpEeprom();
+    static void getAndSaveEeprom();
     static void logCommand();
     static void setBusEnableFlags();
     static byte busEnabled;
     static Message newMessage;
+    
+    static byte buffer[];
 };
+
+byte SerialCommand::buffer[512] = {};
 
 // Defaults
 byte SerialCommand::logOutputMode = 0x0;
@@ -78,11 +85,8 @@ void SerialCommand::init( QueueArray<Message> *q, CANBus b[], int logOutput )
 
 void SerialCommand::tick()
 {
-  
-  if (Serial.available() > 0) {
-    processCommand( Serial.read() );
-  }
-  
+  if (Serial.available() > 0) 
+    processCommand( Serial.read() ); 
 }
 
 Message SerialCommand::process( Message msg )
@@ -109,25 +113,25 @@ void SerialCommand::printMessageToSerial( Message msg )
   
   
   // Output to serial as json string
-  Serial.print("{\"packet\": {\"status\":\"");
+  Serial.print(F("{\"packet\": {\"status\":\""));
   Serial.print( msg.busStatus,HEX);
-  Serial.print("\",\"channel\":\"");
+  Serial.print(F("\",\"channel\":\""));
   Serial.print( busses[msg.busId-1].name );
-  Serial.print("\",\"length\":\"");
+  Serial.print(F("\",\"length\":\""));
   Serial.print(msg.length,HEX);
-  Serial.print("\",\"id\":\"");
+  Serial.print(F("\",\"id\":\""));
   Serial.print(msg.frame_id,HEX);
-  Serial.print("\",\"timestamp\":\"");
+  Serial.print(F("\",\"timestamp\":\""));
   Serial.print(millis(),DEC);
-  Serial.print("\",\"payload\":[\"");
+  Serial.print(F("\",\"payload\":[\""));
   
   
   for (int i=0; i<8; i++) {
     Serial.print(msg.frame_data[i],HEX);
-    if( i<7 ) Serial.print("\",\"");
+    if( i<7 ) Serial.print(F("\",\""));
   }
   
-  Serial.print("\"]}}");
+  Serial.print(F("\"]}}"));
   Serial.println();
   
 }
@@ -135,19 +139,19 @@ void SerialCommand::printMessageToSerial( Message msg )
 
 void SerialCommand::printChannelDebug(CANBus channel){
   
-  Serial.print( "{\"event\":\"channelDebug\", \"name\":\"" );
+  Serial.print( F("{\"event\":\"channelDebug\", \"name\":\"") );
   Serial.print( channel.name );
-  Serial.print("\", \"canctrl\":\"");
+  Serial.print( F("\", \"canctrl\":\""));
   Serial.print( channel.readControl(), BIN );
-  Serial.print("\", \"status\":\"");
+  Serial.print( F("\", \"status\":\""));
   Serial.print( channel.readStatus(), BIN );
-  Serial.print("\", \"error\":\"");
+  Serial.print( F("\", \"error\":\""));
   Serial.print( channel.readRegister(EFLG), BIN );
-  Serial.print("\", \"inte\":\"");
+  Serial.print( F("\", \"inte\":\""));
   Serial.print( channel.readIntE(), BIN );
-  Serial.print("\", \"nextTxBuffer\":\"");
+  Serial.print( F("\", \"nextTxBuffer\":\""));
   Serial.print( channel.getNextTxBuffer(), DEC );
-  Serial.println("\"}");
+  Serial.println(F("\"}"));
   
 }
 
@@ -174,6 +178,8 @@ void SerialCommand::processCommand(int command)
       setBusEnableFlags();
     break;
   }
+  
+  SerialCommand::clearBuffer();
 }
 
 
@@ -185,17 +191,18 @@ void SerialCommand::settingsCall()
   
   // Debug Command
   switch( cmd[0] ){
+    case 1:
+      printChannelDebug();
+    break;
     case 2:
       dumpEeprom();
     break;
     case 3:
       // TODO Read from input and store settings
+      getAndSaveEeprom();
     break;
     case 4:
       Settings::firstbootSetup();
-    break;
-    default:
-      printChannelDebug();
     break;
   }
   
@@ -210,14 +217,46 @@ void SerialCommand::logCommand()
   
   logOutputMode = cmd[0];
   logOutputFilter = (cmd[1]<<8) + cmd[2];
-  Serial.print("{\"event\":\"logMode\", \"mode\": ");
+  Serial.print(F("{\"event\":\"logMode\", \"mode\": "));
   Serial.print(logOutputMode);
-  Serial.print(", \"filter\": ");
+  Serial.print(F(", \"filter\": "));
   Serial.print(logOutputFilter, HEX);
-  Serial.println("}");
+  Serial.println(F("}"));
   
   // Change this system to set RXB0CTRL and RXB1CTRL on each CAN Bus for efficiency
   // This may ot may not work, as the MCP2515 has to be in Configuration mode to set filters
+  
+}
+
+
+void SerialCommand::getAndSaveEeprom()
+{
+  
+  #define CHUNK_SIZE 32
+  
+  byte* settings = (byte *) &cbt_settings;
+  byte cmd[CHUNK_SIZE+1];
+  int bytesRead = getCommandBody( cmd, CHUNK_SIZE+2 );
+  
+  if( bytesRead == CHUNK_SIZE+2 && cmd[CHUNK_SIZE+1] == 0xA1 ){
+      
+    memcpy( settings+(cmd[0]*CHUNK_SIZE), &cmd[1], CHUNK_SIZE );
+    
+    Serial.print( F("{\"event\":\"eepromData\", \"result\":\"success\", \"chunk\":\"") );
+    Serial.print(cmd[0]);
+    Serial.println(F("\"}"));
+    
+    if( cmd[0]+1 == 512/CHUNK_SIZE ){ // At last chunk
+      Settings::save(&cbt_settings);
+      Serial.println(F("{\"event\":\"eepromSave\", \"result\":\"success\"}"));
+    }
+    
+  }else{
+    Serial.print( F("{\"event\":\"eepromData\", \"result\":\"failure\", \"chunk\":\"") );
+    Serial.print(cmd[0]);
+    Serial.println(F("\"}"));
+  }
+  
   
 }
 
@@ -253,9 +292,9 @@ void SerialCommand::setBusEnableFlags(){
   int bytesRead = getCommandBody( cmd, 1 );
   
   SerialCommand::busEnabled = cmd[0];
-  Serial.print("{\"event\":\"logBusFilter\", \"mode\": ");
+  Serial.print(F("{\"event\":\"logBusFilter\", \"mode\": "));
   Serial.print(SerialCommand::busEnabled, HEX);
-  Serial.println("}");
+  Serial.println(F("}"));
   
 }
 
@@ -264,38 +303,47 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
 {
   unsigned int i = 0;
   
-  while( Serial.available() ){
-    if( i <= length ){
-      cmd[i] = Serial.read();
-      // Serial.print( cmd[i], HEX );
-    }else{
-      Serial.read();
-    }
+  while( Serial.available() && i < length ){
+    cmd[i] = Serial.read();
     i++;
   }
   
   return i;
 }
 
+void SerialCommand::clearBuffer()
+{
+  while(Serial.available())
+    Serial.read();
+}
+
 
 void SerialCommand::printChannelDebug()
 {
-  Serial.println("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.2.0\"}");
+  Serial.print(F("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.2.0\", \"memory\":\""));
+  Serial.print(freeRam());
+  Serial.println(F("\"}"));
   printChannelDebug( busses[0] );
   printChannelDebug( busses[1] );
   printChannelDebug( busses[2] );
+  
 }
 
 void SerialCommand::dumpEeprom()
 {
   // dump eeprom
-  Serial.print( "{\"event\":\"settings\", \"eeprom\":\"" );
+  Serial.print(F("{\"event\":\"settings\", \"eeprom\":\""));
   for(int i=0; i<512; i++){
     Serial.print( EEPROM.read(i), HEX );
-    Serial.print( ":" );
+    if(i<511) Serial.print( ":" );
   }
-  Serial.print("\"}");
+  Serial.println(F("\"}"));
 }
 
+int SerialCommand::freeRam (){
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
 
 

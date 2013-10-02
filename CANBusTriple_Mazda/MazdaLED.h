@@ -25,7 +25,8 @@ class MazdaLED : Middleware
     static unsigned long animationCounter;
     static Message process( Message msg );
     static char* currentLcdString();
-    static void sendServiceCalls( struct pid pid[] );
+    static unsigned long lastServiceCallSent;
+    static void sendNextServiceCall( struct pid pid[] );
     
 };
 
@@ -36,14 +37,7 @@ QueueArray<Message>* MazdaLED::mainQueue;
 char MazdaLED::lcdString[13] = "CANBusTriple";
 char MazdaLED::lcdStockString[13] = "            ";
 char MazdaLED::lcdStatusString[13] = "            ";
-
-int afr;
-int afrWhole;
-int afrRemainder;
-int knockRetard;
-int egt;
-int sparkAdvance;
-int pWeight;
+unsigned long MazdaLED::lastServiceCallSent = millis();
 
 unsigned long MazdaLED::animationCounter = 0;
 unsigned long MazdaLED::stockOverrideTimer = 4000;
@@ -72,7 +66,10 @@ void MazdaLED::tick()
   }
   
   // Send service calls every ~100ms
-  if( (millis() % 100) < 1 ) MazdaLED::sendServiceCalls( cbt_settings.pids );
+  if( millis() > MazdaLED::lastServiceCallSent + 30 ){
+    MazdaLED::lastServiceCallSent = millis();
+    MazdaLED::sendNextServiceCall( cbt_settings.pids );
+  }
   
 }
 
@@ -84,7 +81,7 @@ void MazdaLED::showStatusMessage(char* str, int time){
 
 
 
-void MazdaLED::sendServiceCalls( struct pid pid[] ){
+void MazdaLED::sendNextServiceCall( struct pid pid[] ){
   
   for( int i=0; i<Settings::pidLength; i++ ){
     
@@ -272,7 +269,8 @@ Message MazdaLED::process(Message msg)
     
   }
   
-  // Process service call responses
+  // Process service call responses 
+  // -- TODO: Break this out into its own class
   for( int i=0; i<Settings::pidLength; i++ ){
     
     struct pid *pid = &cbt_settings.pids[i];
