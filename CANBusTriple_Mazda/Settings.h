@@ -15,7 +15,7 @@ struct pid {
 struct cbt_settings {
   byte displayEnabled;
   byte firstboot;
-  byte placeholder2;
+  byte displayIndex;
   byte placeholder3;
   byte placeholder4;
   byte placeholder5;
@@ -65,7 +65,7 @@ void Settings::firstbootSetup()
   struct cbt_settings stockSettings = {
     1, // displayEnabled
     1, // firstboot
-    0, // placeholder2
+    0, // displayIndex
     0, // placeholder3
     0, // placeholder4
     0, // placeholder5

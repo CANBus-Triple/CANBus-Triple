@@ -25,8 +25,6 @@ class MazdaLED : Middleware
     static unsigned long animationCounter;
     static Message process( Message msg );
     static char* currentLcdString();
-    static unsigned long lastServiceCallSent;
-    static void sendNextServiceCall( struct pid pid[] );
     
 };
 
@@ -37,7 +35,6 @@ QueueArray<Message>* MazdaLED::mainQueue;
 char MazdaLED::lcdString[13] = "CANBusTriple";
 char MazdaLED::lcdStockString[13] = "            ";
 char MazdaLED::lcdStatusString[13] = "            ";
-unsigned long MazdaLED::lastServiceCallSent = millis();
 
 unsigned long MazdaLED::animationCounter = 0;
 unsigned long MazdaLED::stockOverrideTimer = 4000;
@@ -65,12 +62,6 @@ void MazdaLED::tick()
     updateCounter = millis();
   }
   
-  // Send service calls every ~100ms
-  if( millis() > MazdaLED::lastServiceCallSent + 30 ){
-    MazdaLED::lastServiceCallSent = millis();
-    MazdaLED::sendNextServiceCall( cbt_settings.pids );
-  }
-  
 }
 
 
@@ -78,43 +69,6 @@ void MazdaLED::showStatusMessage(char* str, int time){
   sprintf( MazdaLED::lcdStatusString , str);
   MazdaLED::setStatusTime(time);
 }
-
-
-
-void MazdaLED::sendNextServiceCall( struct pid pid[] ){
-  
-  for( int i=0; i<Settings::pidLength; i++ ){
-    
-    // if( pid[i].txd[0] == 0 && pid[i].txd[1] == 0 ) // Aborts if we have no PID
-    if( pid[i].txd[2] == 0 )                          // Aborts if we have no service call data. Allows us to match on passive PIDs
-      continue;
-    
-    Message msg;
-    msg.busId = pid[i].busId;
-    msg.frame_id = (pid[i].txd[0] << 8) + pid[i].txd[1];
-    
-    int ii = 0;
-    while( ii <= 5 && pid[i].txd[ii+2] != 0 ){
-      msg.frame_data[ii+1] = pid[i].txd[ii+2];
-      ii++;
-    }
-      
-    msg.frame_data[0] = ii;
-    
-    msg.length = 8;
-    msg.dispatch = true;
-    mainQueue->push(msg);
-    
-    /*
-    Serial.print("Service call sent pid settings storage location:");
-    Serial.println(i);
-    SerialCommand::printMessageToSerial( msg );
-    */
-    
-  }
-  
-}
-
 
 
 void MazdaLED::pushNewMessage(){
@@ -192,7 +146,9 @@ void MazdaLED::setStatusTime( int n ){
 
 Message MazdaLED::process(Message msg)
 {
-  if(!enabled) return msg;
+  if(!enabled){
+    return msg;
+  }
   
   if( msg.frame_id == 0x28F && stockOverrideTimer < millis() ){
     // Block extras
@@ -269,87 +225,20 @@ Message MazdaLED::process(Message msg)
     
   }
   
-  // Process service call responses 
-  // -- TODO: Break this out into its own class
-  for( int i=0; i<Settings::pidLength; i++ ){
-    
-    struct pid *pid = &cbt_settings.pids[i];
-    if( pid->txd[0] == 0 && pid->txd[1] == 0 )
-      continue;
-    
-    // If the PID returned is 8 higher than the request pid we've recieved a response
-    if(msg.frame_id == ((pid->txd[0]<<8)+pid->txd[1]+0x08) ){
-      
-      // Match RXD
-      int rxfi = 0;
-      boolean match = true;
-      while( rxfi <= 6 && pid->rxf[rxfi] ){
-        if( msg.frame_data[ pid->rxf[rxfi]-3 ] != pid->rxf[rxfi+1]){ // use rxf -3 as scangauge is 1 indexed and assumes 2 byes of pid data 
-          match = false;
-          break;
-        };
-        rxfi += 2;
-      }
-      
-      if(match){
-        
-        /*
-        Serial.print("Got response packet for PID ");
-        Serial.println( pid->name );
-        SerialCommand::printMessageToSerial( msg );
-        */
-        
-        byte start = (pid->rxd[0]/8) - 2; // Remove two bytes of length to compensate for the fact PID is not in this array. For ScanGauge compat
-        byte A = msg.frame_data[start];
-        byte B;
-        
-        if( pid->rxd[1] == 16 )
-          B = msg.frame_data[start+1];
-        else
-          B = 0;
-        
-        // Do math
-        unsigned int base;
-        base = 0;
-        if( pid->rxd[1] == 16 )
-          base = (A << 8) + B;
-        else
-          base = A;
-        
-        /*
-        Serial.println(A);
-        Serial.println(B);
-        */
-        
-        unsigned int mult = (pid->mth[0] << 8) + pid->mth[1];
-        unsigned int div  = (pid->mth[2] << 8) + pid->mth[3];
-        unsigned int add  = (pid->mth[4] << 8) + pid->mth[5];
-        
-        if(div == 0) div = 1;
-        
-        float divResult;
-        divResult = (float)base / (float)div;\
-        divResult = divResult * mult;
-        base = divResult + add;
-        
-        pid->value = base;
-        
-      }
-      
-      
-      
-      
-    }
-    
-  }
-  
-  
-  sprintf(lcdString, "A:%d E:%d",  cbt_settings.pids[1].value, cbt_settings.pids[0].value );
+  // TODO: Make float compat
+  // ALSO displayIndex+1 may crash! This could go beyond the bounds of the pids[]!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // sprintf(lcdString, "A:%d E:%d",  cbt_settings.pids[1].value, cbt_settings.pids[0].value );
+  sprintf(lcdString, "%c:%d E:%d", cbt_settings.pids[cbt_settings.displayIndex].name[0], 
+                                   cbt_settings.pids[cbt_settings.displayIndex].value, 
+                                   cbt_settings.pids[cbt_settings.displayIndex+1].name[0], 
+                                   cbt_settings.pids[cbt_settings.displayIndex+1].value );
   
   // Turn off extras like decimal point. Needs verification!
   if( msg.frame_id == 0x201 ){
     msg.dispatch = false;
   }
+  
+  // Serial.println(lcdString);
   
   
   // Animation

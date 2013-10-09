@@ -15,6 +15,7 @@
 #include "ChannelSwap.h"
 #include "SerialCommand.h"
 #include "MazdaLED.h"
+#include "ServiceCall.h"
 
 #define BOOT_LED 7
 
@@ -88,6 +89,7 @@ void setup(){
   delay(100);
   
   // Middleware setup
+  ServiceCall::init( &messageQueue );
   MazdaLED::init( &messageQueue, cbt_settings.displayEnabled );
   SerialCommand::init( &messageQueue, busses, 0 );
   
@@ -106,30 +108,34 @@ void loop() {
    
    switch(wheelButton){
      case B10000000:
-       MazdaLED::showStatusMessage("LEFT        ", 2000);
+       MazdaLED::showStatusMessage("    LEFT    ", 2000);
      break;
      case B01000000:
-       MazdaLED::showStatusMessage("DERP        ", 2000);
+       MazdaLED::showStatusMessage("  !DANGER!  ", 2000);
      break;
      case B00100000:
-       MazdaLED::showStatusMessage("HERP        ", 2000);
+       MazdaLED::showStatusMessage("     UP     ", 2000);
      break;
      case B00010000:
-       MazdaLED::showStatusMessage("NERP        ", 2000);
+       MazdaLED::showStatusMessage("    DOWN    ", 2000);
      break;
-     case B1000010:
-       cbt_settings.displayEnabled = MazdaLED::enabled = !MazdaLED::enabled;
-       // Settings::save(&cbt_settings);
-       EEPROM.write( offsetof(struct cbt_settings, displayEnabled), cbt_settings.displayEnabled);
-       
-       if(MazdaLED::enabled)
-         MazdaLED::showStatusMessage("MazdaLED ON ", 2000);
+     case B10000001:
+       // Increment service pid 
+       ServiceCall::incServiceIndex();
+     break;
+     case B01000001:
+       // Decrement service pid
+       ServiceCall::decServiceIndex();
+     break;
+     case B01000010:
+       toggleMazdaLed();
      break;
    }
  
  }
  
   // All Middleware ticks (Like loop() for middleware)
+  ServiceCall::tick();
   MazdaLED::tick();
   SerialCommand::tick();
   
@@ -139,9 +145,9 @@ void loop() {
   
   // Process message stack
   if( debug && !messageQueue.isEmpty() ){ 
-    Serial.print("{queueCount:" ); 
+    Serial.print(F("{queueCount:")); 
     Serial.print( messageQueue.count(), DEC ); 
-    Serial.println("}"); 
+    Serial.println(F("}"));
   }
   
   boolean success = true;
@@ -161,6 +167,15 @@ void loop() {
     
   }
   
+}
+
+
+void toggleMazdaLed()
+{
+  cbt_settings.displayEnabled = MazdaLED::enabled = !MazdaLED::enabled;
+  EEPROM.write( offsetof(struct cbt_settings, displayEnabled), cbt_settings.displayEnabled);
+  if(MazdaLED::enabled)
+    MazdaLED::showStatusMessage("MazdaLED ON ", 2000);
 }
 
 
@@ -192,9 +207,9 @@ boolean sendMessage( Message msg, CANBus channel ){
   }
   
   if(debug){
-    Serial.print("Sent a message on TXB");
+    Serial.print(F("Sent a message on TXB"));
     Serial.print( ch, DEC );
-    Serial.print(" via bus ");
+    Serial.print(F(" via bus "));
     Serial.println( channel.name );
   }
   
@@ -246,6 +261,7 @@ void processMessage( Message msg ){
   
   // All Middleware process calls (Augment incoming CAN packets)
   msg = SerialCommand::process( msg );
+  msg = ServiceCall::process( msg );
   msg = MazdaLED::process( msg );
   msg = ChannelSwap::process( msg );
   
