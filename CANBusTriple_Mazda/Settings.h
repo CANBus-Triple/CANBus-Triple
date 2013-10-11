@@ -108,7 +108,7 @@ void Settings::firstbootSetup()
   
   Settings::save(&stockSettings);
   Settings::init();
-  Serial.println( "{\"event\":\"eepromReset\", \"result\":\"success\"}" );
+  Serial.println( F("{\"event\":\"eepromReset\", \"result\":\"success\"}" ));
   
   // Slow flash to show first boot successful
   for(int i=0;i<6;i++){

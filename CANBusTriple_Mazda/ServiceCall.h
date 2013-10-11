@@ -1,6 +1,8 @@
 
 #include "Middleware.h"
 
+#define NUM_PID_TO_PROCESS 2
+
 
 class ServiceCall : Middleware
 {
@@ -24,7 +26,7 @@ class ServiceCall : Middleware
 
 QueueArray<Message>* ServiceCall::mainQueue;
 unsigned long ServiceCall::lastServiceCallSent = millis();
-byte* ServiceCall::index = &cbt_settings.displayIndex;
+byte * ServiceCall::index = &cbt_settings.displayIndex;
 
 void ServiceCall::init( QueueArray<Message> *q )
 {
@@ -46,7 +48,7 @@ void ServiceCall::tick()
 Message ServiceCall::process(Message msg){
   
   // Process service call responses 
-  for( int i=0; i<Settings::pidLength; i++ ){
+  for( int i=*index; i<*index+NUM_PID_TO_PROCESS; i++ ){
     
     struct pid *pid = &cbt_settings.pids[i];
     if( pid->txd[0] == 0 && pid->txd[1] == 0 )
@@ -67,7 +69,6 @@ Message ServiceCall::process(Message msg){
       }
       
       if(match){
-        
         /*
         Serial.print("Got response packet for PID ");
         Serial.println( pid->name );
@@ -115,6 +116,8 @@ Message ServiceCall::process(Message msg){
     
   }
   
+  
+  return msg;
 }
 
 
@@ -132,23 +135,25 @@ void ServiceCall::setServiceIndex(byte i)
 
 byte ServiceCall::incServiceIndex()
 {
-  if( (*index+1) > Settings::pidLength-1 )
+  
+  if( (*index+1) > Settings::pidLength-2 )
    *index = 0;
   else
-   *index++;
+   *index = *index + 1;
   
-  saveSettings();
+  ServiceCall::saveSettings();
   return *index;
 }
 
 byte ServiceCall::decServiceIndex()
 {
-  if( (*index-1) <= 0 )
-   *index = Settings::pidLength-1;
-  else
-   *index--; 
   
-  saveSettings();
+  if( (*index-1) < 0 )
+   *index = Settings::pidLength-2;
+  else
+   *index = *index-1;
+  
+  ServiceCall::saveSettings();
   return *index;
 }
 
@@ -160,8 +165,12 @@ void ServiceCall::saveSettings()
 
 void ServiceCall::sendNextServiceCall( struct pid pid[] ){
   
-  // for( int i=0; i<Settings::pidLength; i++ ){
-  for( int i=*index; i<*index+1; i++ ){
+  
+  /* TODO
+   * Make this look down to 0 when the index is 7, right now it just increments up one which could try to access a non-existant index of 9.
+   * Same with the read response function.
+  */
+  for( int i=*index; i<*index+NUM_PID_TO_PROCESS; i++ ){
     
     // if( pid[i].txd[0] == 0 && pid[i].txd[1] == 0 ) // Aborts if we have no PID
     if( pid[i].txd[2] == 0 || pid[i].busId < 1 )      // Aborts if we have no service call data. Allows us to match on passive PIDs
@@ -184,9 +193,11 @@ void ServiceCall::sendNextServiceCall( struct pid pid[] ){
     mainQueue->push(msg);
     
     /*
-    Serial.print("Service call sent pid settings storage location:");
-    Serial.println(i);
-    SerialCommand::printMessageToSerial( msg );
+    Serial.print("Service call sent pid settings storage location: ");
+    Serial.print(i);
+    Serial.print(" ");
+    Serial.println( pid[i].name );
+    // SerialCommand::printMessageToSerial( msg );
     */
     
   }

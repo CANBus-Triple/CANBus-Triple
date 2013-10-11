@@ -103,8 +103,11 @@ void handleInterrupt1(){}
 void loop() {
   
  byte button = WheelButton::getButtonDown();
+ 
  if( wheelButton != button ){
    wheelButton = button;
+   
+   char msgBuffer[13];
    
    switch(wheelButton){
      case B10000000:
@@ -120,12 +123,16 @@ void loop() {
        MazdaLED::showStatusMessage("    DOWN    ", 2000);
      break;
      case B10000001:
-       // Increment service pid 
-       ServiceCall::incServiceIndex();
-     break;
-     case B01000001:
        // Decrement service pid
        ServiceCall::decServiceIndex();
+       sprintf( msgBuffer, "vv PAGE %d vv", cbt_settings.displayIndex+1 );
+       MazdaLED::showStatusMessage(msgBuffer, 2000);
+     break;
+     case B01000001:
+       // Increment service pid 
+       ServiceCall::incServiceIndex();
+       sprintf( msgBuffer, "^^ PAGE %d ^^", cbt_settings.displayIndex+1 );
+       MazdaLED::showStatusMessage(msgBuffer, 2000);
      break;
      case B01000010:
        toggleMazdaLed();

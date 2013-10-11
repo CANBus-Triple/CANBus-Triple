@@ -227,11 +227,12 @@ Message MazdaLED::process(Message msg)
   
   // TODO: Make float compat
   // ALSO displayIndex+1 may crash! This could go beyond the bounds of the pids[]!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  // sprintf(lcdString, "A:%d E:%d",  cbt_settings.pids[1].value, cbt_settings.pids[0].value );
-  sprintf(lcdString, "%c:%d E:%d", cbt_settings.pids[cbt_settings.displayIndex].name[0], 
+  //sprintf(lcdString, "A:%d E:%d",  cbt_settings.pids[1].value, cbt_settings.pids[0].value );
+  sprintf(lcdString, "%c:%d %c:%d", cbt_settings.pids[cbt_settings.displayIndex].name[0], 
                                    cbt_settings.pids[cbt_settings.displayIndex].value, 
                                    cbt_settings.pids[cbt_settings.displayIndex+1].name[0], 
                                    cbt_settings.pids[cbt_settings.displayIndex+1].value );
+                                   
   
   // Turn off extras like decimal point. Needs verification!
   if( msg.frame_id == 0x201 ){
