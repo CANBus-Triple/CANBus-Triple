@@ -104,7 +104,7 @@ Message ServiceCall::process(Message msg){
         if(div == 0) div = 1;
         
         float divResult;
-        divResult = (float)base / (float)div;\
+        divResult = (float)base / (float)div;
         divResult = divResult * mult;
         base = divResult + add;
         

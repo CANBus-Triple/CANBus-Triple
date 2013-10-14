@@ -7,7 +7,7 @@ int infoButtonIn = A1;
 #define ARROW_BUTTON_UP 10
 #define ARROW_BUTTON_DOWN 23
 #define ARROW_BUTTON_LEFT 38
-#define ARROW_BUTTON_RIGHT 56
+#define ARROW_BUTTON_RIGHT 54
 #define INFO_BUTTON_NONE 102
 #define INFO_BUTTON_NAV 10
 #define INFO_BUTTON_BACK 23
@@ -53,7 +53,7 @@ boolean WheelButton::arrowButtonIsDown = false;
 boolean WheelButton::infoButtonIsDown = false;
 long WheelButton::lastDebounceTime = 0;
 byte WheelButton::btnState = 0;
-byte WheelButton::error = 3;
+byte WheelButton::error = 6;
 
 byte WheelButton::getButtonDown()
 {
@@ -63,6 +63,7 @@ byte WheelButton::getButtonDown()
   
   // Arrow buttons
   int btn = analogRead(arrowButtonIn) / 10;
+  Serial.println(btn);
   
   if(compare( btn , ARROW_BUTTON_UP ))
     currentReading += B_ARROW_UP;

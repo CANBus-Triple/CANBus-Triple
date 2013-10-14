@@ -1,10 +1,13 @@
 
+
+
 #include <avr/eeprom.h>
 
 struct pid {
   byte busId;
   byte settings; // unused, unused, unused, unused, unused, unused, unused, Float flag
   unsigned int value;
+  // float value; // 4 byte float
   byte txd[8];
   byte rxf[6];
   byte rxd[2];
