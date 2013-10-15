@@ -13,6 +13,7 @@ class MazdaLED : Middleware
   public:
     static void init( QueueArray<Message> *q, byte enabled );
     static void tick();
+    static void showNewPageMessage();
     static boolean enabled;
     static void showStatusMessage(char* str, int time);
     static char lcdString[13];
@@ -226,13 +227,33 @@ Message MazdaLED::process(Message msg)
   }
   
   // TODO: Make float compat
-  // ALSO displayIndex+1 may crash! This could go beyond the bounds of the pids[]!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  //sprintf(lcdString, "A:%d E:%d",  cbt_settings.pids[1].value, cbt_settings.pids[0].value );
-  sprintf(lcdString, "%c:%d %c:%d", cbt_settings.pids[cbt_settings.displayIndex].name[0], 
-                                   cbt_settings.pids[cbt_settings.displayIndex].value, 
-                                   cbt_settings.pids[cbt_settings.displayIndex+1].name[0], 
-                                   cbt_settings.pids[cbt_settings.displayIndex+1].value );
-                                   
+  byte incIndex = ( cbt_settings.displayIndex+1 > Settings::pidLength-1 ) ? 0 : cbt_settings.displayIndex+1;
+  
+  char buffer[6] = "     ";
+  
+  
+  
+  sprintf(lcdString, "            ");
+  
+  // TODO: Tidy up with a loop
+  if( cbt_settings.pids[cbt_settings.displayIndex].settings & B00000001 == B00000001 ){ // add decimal flag
+  sprintf(lcdString, "%c:%d.%d", cbt_settings.pids[cbt_settings.displayIndex].name[0], 
+                                   cbt_settings.pids[cbt_settings.displayIndex].value/10,
+                                   cbt_settings.pids[cbt_settings.displayIndex].value%10);
+  }else{
+    sprintf(lcdString, "%c:%d", cbt_settings.pids[cbt_settings.displayIndex].name[0], 
+                                   cbt_settings.pids[cbt_settings.displayIndex].value);
+  }
+  
+  if( cbt_settings.pids[incIndex].settings & B00000001 == B00000001 ){ // add decimal flag
+  sprintf(lcdString+6, "%c:%d.%d", cbt_settings.pids[incIndex].name[0], 
+                                    cbt_settings.pids[incIndex].value/10,
+                                    cbt_settings.pids[incIndex].value%10);
+  }else{
+    sprintf(lcdString+6, "%c:%d", cbt_settings.pids[incIndex].name[0], 
+                                   cbt_settings.pids[incIndex].value);
+  }
+  
   
   // Turn off extras like decimal point. Needs verification!
   if( msg.frame_id == 0x201 ){
@@ -249,5 +270,22 @@ Message MazdaLED::process(Message msg)
    
   return msg;
 }
+
+
+void MazdaLED::showNewPageMessage()
+{
+  char msgBuffer[13] = "            ";
+  sprintf( msgBuffer, " %c%c%c%c  %c%c%c%c ", cbt_settings.pids[cbt_settings.displayIndex].name[0], 
+                                              cbt_settings.pids[cbt_settings.displayIndex].name[1], 
+                                              cbt_settings.pids[cbt_settings.displayIndex].name[2],
+                                              cbt_settings.pids[cbt_settings.displayIndex].name[3],
+                                              
+                                              cbt_settings.pids[cbt_settings.displayIndex+1].name[0],
+                                              cbt_settings.pids[cbt_settings.displayIndex+1].name[1],
+                                              cbt_settings.pids[cbt_settings.displayIndex+1].name[2],
+                                              cbt_settings.pids[cbt_settings.displayIndex+1].name[3]);
+  MazdaLED::showStatusMessage(msgBuffer, 2000);
+}
+
 
 

@@ -24,7 +24,7 @@
 #define CAN1RESET 4
 
 #define CAN2INT 1
-#define CAN2SELECT 1
+#define CAN2SELECT 1`  `  
 #define CAN2RESET 12
 
 #define CAN3SELECT 5
@@ -107,8 +107,6 @@ void loop() {
  if( wheelButton != button ){
    wheelButton = button;
    
-   char msgBuffer[13];
-   
    switch(wheelButton){
      case B10000000:
        MazdaLED::showStatusMessage("    LEFT    ", 2000);
@@ -125,14 +123,12 @@ void loop() {
      case B10000001:
        // Decrement service pid
        ServiceCall::decServiceIndex();
-       sprintf( msgBuffer, "vv PAGE %d vv", cbt_settings.displayIndex+1 );
-       MazdaLED::showStatusMessage(msgBuffer, 2000);
+       MazdaLED::showNewPageMessage();
      break;
      case B01000001:
        // Increment service pid 
        ServiceCall::incServiceIndex();
-       sprintf( msgBuffer, "^^ PAGE %d ^^", cbt_settings.displayIndex+1 );
-       MazdaLED::showStatusMessage(msgBuffer, 2000);
+       MazdaLED::showNewPageMessage();
      break;
      case B01000010:
        toggleMazdaLed();

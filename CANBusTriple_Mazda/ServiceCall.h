@@ -60,7 +60,7 @@ Message ServiceCall::process(Message msg){
       // Match RXD
       int rxfi = 0;
       boolean match = true;
-      while( rxfi <= 6 && pid->rxf[rxfi] ){
+      while( rxfi < 6 && pid->rxf[rxfi] ){
         if( msg.frame_data[ pid->rxf[rxfi]-3 ] != pid->rxf[rxfi+1]){ // use rxf -3 as scangauge is 1 indexed and assumes 2 byes of pid data 
           match = false;
           break;
@@ -136,7 +136,7 @@ void ServiceCall::setServiceIndex(byte i)
 byte ServiceCall::incServiceIndex()
 {
   
-  if( (*index+1) > Settings::pidLength-2 )
+  if( (*index+1) > Settings::pidLength-1 )
    *index = 0;
   else
    *index = *index + 1;
@@ -149,7 +149,7 @@ byte ServiceCall::decServiceIndex()
 {
   
   if( (*index-1) < 0 )
-   *index = Settings::pidLength-2;
+   *index = Settings::pidLength-1;
   else
    *index = *index-1;
   
