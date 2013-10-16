@@ -24,7 +24,7 @@
 #define CAN1RESET 4
 
 #define CAN2INT 1
-#define CAN2SELECT 1`  `  
+#define CAN2SELECT 1 
 #define CAN2RESET 12
 
 #define CAN3SELECT 5
