@@ -30,8 +30,17 @@ Cmd    Bus Enabled Flags
 0x04   0x4 (B100)         // Enable only Bus 3
 
 
+Bluetooth
+Cmd  Function
+0x08  Reset BLE112
+
+
 
 */
+
+#define BT_RESET 8
+
+
 
 #include "Middleware.h"
 
@@ -42,6 +51,7 @@ class SerialCommand : Middleware
     static byte logOutputMode;
     static unsigned int logOutputFilter;
     static CANBus busses[3];
+    static Stream* activeSerial;
     static void init( QueueArray<Message> *q, CANBus b[], int logOutput );
     static void tick();
     static Message process( Message msg );
@@ -60,24 +70,34 @@ class SerialCommand : Middleware
     static void getAndSaveEeprom();
     static void logCommand();
     static void setBusEnableFlags();
+    static void bluetooth();
+    static boolean passthroughMode;
     static byte busEnabled;
     static Message newMessage;
-    
     static byte buffer[];
+    
 };
 
 byte SerialCommand::buffer[512] = {};
 
 // Defaults
-byte SerialCommand::logOutputMode = 0x0;
+byte SerialCommand::logOutputMode = 0x01;
 unsigned int SerialCommand::logOutputFilter = 0;
 QueueArray<Message> *SerialCommand::mainQueue;
 //CANBus SerialCommand::busses[3];
 byte SerialCommand::busEnabled = 0x7; // Start with all busses enabled
 
+boolean SerialCommand::passthroughMode = false;
+
+
+Stream* SerialCommand::activeSerial = &Serial;
+
 
 void SerialCommand::init( QueueArray<Message> *q, CANBus b[], int logOutput )
 {
+  Serial.begin( 115200 );
+  Serial1.begin( 57600 );
+  
   // busses = { b[0], b[1], b[2] };
   SerialCommand::logOutputMode = logOutput;
   mainQueue = q;
@@ -85,8 +105,25 @@ void SerialCommand::init( QueueArray<Message> *q, CANBus b[], int logOutput )
 
 void SerialCommand::tick()
 {
-  if (Serial.available() > 0) 
-    processCommand( Serial.read() ); 
+  
+  // Pass-through mode for bluetooth DFU mode
+  if( passthroughMode ){
+    while(Serial.available()) Serial1.write(Serial.read());
+    while(Serial1.available()) Serial.write(Serial1.read());
+    return;
+  }
+  
+  
+  if( Serial.available() > 0 ){
+    activeSerial = &Serial;
+    processCommand( Serial.read() );
+  }
+   
+  if( Serial1.available() > 0 ){
+    activeSerial = &Serial1;
+    processCommand( Serial1.read() );
+  }
+  
 }
 
 Message SerialCommand::process( Message msg )
@@ -113,47 +150,29 @@ void SerialCommand::printMessageToSerial( Message msg )
   
   
   // Output to serial as json string
-  Serial.print(F("{\"packet\": {\"status\":\""));
-  Serial.print( msg.busStatus,HEX);
-  Serial.print(F("\",\"channel\":\""));
-  Serial.print( busses[msg.busId-1].name );
-  Serial.print(F("\",\"length\":\""));
-  Serial.print(msg.length,HEX);
-  Serial.print(F("\",\"id\":\""));
-  Serial.print(msg.frame_id,HEX);
-  Serial.print(F("\",\"timestamp\":\""));
-  Serial.print(millis(),DEC);
-  Serial.print(F("\",\"payload\":[\""));
+  activeSerial->print(F("{\"packet\": {\"status\":\""));
+  activeSerial->print( msg.busStatus,HEX);
+  activeSerial->print(F("\",\"channel\":\""));
+  activeSerial->print( busses[msg.busId-1].name );
+  activeSerial->print(F("\",\"length\":\""));
+  activeSerial->print(msg.length,HEX);
+  activeSerial->print(F("\",\"id\":\""));
+  activeSerial->print(msg.frame_id,HEX);
+  activeSerial->print(F("\",\"timestamp\":\""));
+  activeSerial->print(millis(),DEC);
+  activeSerial->print(F("\",\"payload\":[\""));
   
   
   for (int i=0; i<8; i++) {
-    Serial.print(msg.frame_data[i],HEX);
-    if( i<7 ) Serial.print(F("\",\""));
+    activeSerial->print(msg.frame_data[i],HEX);
+    if( i<7 ) activeSerial->print(F("\",\""));
   }
   
-  Serial.print(F("\"]}}"));
-  Serial.println();
+  activeSerial->print(F("\"]}}"));
+  activeSerial->println();
   
 }
 
-
-void SerialCommand::printChannelDebug(CANBus channel){
-  
-  Serial.print( F("{\"event\":\"channelDebug\", \"name\":\"") );
-  Serial.print( channel.name );
-  Serial.print( F("\", \"canctrl\":\""));
-  Serial.print( channel.readControl(), BIN );
-  Serial.print( F("\", \"status\":\""));
-  Serial.print( channel.readStatus(), BIN );
-  Serial.print( F("\", \"error\":\""));
-  Serial.print( channel.readRegister(EFLG), BIN );
-  Serial.print( F("\", \"inte\":\""));
-  Serial.print( channel.readIntE(), BIN );
-  Serial.print( F("\", \"nextTxBuffer\":\""));
-  Serial.print( channel.getNextTxBuffer(), DEC );
-  Serial.println(F("\"}"));
-  
-}
 
 
 
@@ -161,21 +180,24 @@ void SerialCommand::processCommand(int command)
 {
   
   switch( command ){
-    case 1:
+    case 0x01:
       settingsCall();
     break;
-    case 2:
+    case 0x02:
       // Send command
       // Ex: 02 03 02 92 66 66 66 66 66 66 66 66 08 
       getAndSend();
     break;
-    case 3:
+    case 0x03:
       // Log output toggle
       // Ex: 03 02 02 90
       logCommand();
     break;
-    case 4:
+    case 0x04:
       setBusEnableFlags();
+    break;
+    case 0x08:
+      bluetooth();
     break;
   }
   
@@ -203,7 +225,7 @@ void SerialCommand::settingsCall()
     break;
     case 4:
       Settings::firstbootSetup();
-    break;
+    break;    
   }
   
   
@@ -217,11 +239,11 @@ void SerialCommand::logCommand()
   
   logOutputMode = cmd[0];
   logOutputFilter = (cmd[1]<<8) + cmd[2];
-  Serial.print(F("{\"event\":\"logMode\", \"mode\": "));
-  Serial.print(logOutputMode);
-  Serial.print(F(", \"filter\": "));
-  Serial.print(logOutputFilter, HEX);
-  Serial.println(F("}"));
+  activeSerial->print(F("{\"event\":\"logMode\", \"mode\": "));
+  activeSerial->print(logOutputMode);
+  activeSerial->print(F(", \"filter\": "));
+  activeSerial->print(logOutputFilter, HEX);
+  activeSerial->println(F("}"));
   
   // Change this system to set RXB0CTRL and RXB1CTRL on each CAN Bus for efficiency
   // This may ot may not work, as the MCP2515 has to be in Configuration mode to set filters
@@ -242,19 +264,19 @@ void SerialCommand::getAndSaveEeprom()
       
     memcpy( settings+(cmd[0]*CHUNK_SIZE), &cmd[1], CHUNK_SIZE );
     
-    Serial.print( F("{\"event\":\"eepromData\", \"result\":\"success\", \"chunk\":\"") );
-    Serial.print(cmd[0]);
-    Serial.println(F("\"}"));
+    activeSerial->print( F("{\"event\":\"eepromData\", \"result\":\"success\", \"chunk\":\"") );
+    activeSerial->print(cmd[0]);
+    activeSerial->println(F("\"}"));
     
     if( cmd[0]+1 == 512/CHUNK_SIZE ){ // At last chunk
       Settings::save(&cbt_settings);
-      Serial.println(F("{\"event\":\"eepromSave\", \"result\":\"success\"}"));
+      activeSerial->println(F("{\"event\":\"eepromSave\", \"result\":\"success\"}"));
     }
     
   }else{
-    Serial.print( F("{\"event\":\"eepromData\", \"result\":\"failure\", \"chunk\":\"") );
-    Serial.print(cmd[0]);
-    Serial.println(F("\"}"));
+    activeSerial->print( F("{\"event\":\"eepromData\", \"result\":\"failure\", \"chunk\":\"") );
+    activeSerial->print(cmd[0]);
+    activeSerial->println(F("\"}"));
   }
   
   
@@ -292,19 +314,47 @@ void SerialCommand::setBusEnableFlags(){
   int bytesRead = getCommandBody( cmd, 1 );
   
   SerialCommand::busEnabled = cmd[0];
-  Serial.print(F("{\"event\":\"logBusFilter\", \"mode\": "));
-  Serial.print(SerialCommand::busEnabled, HEX);
-  Serial.println(F("}"));
+  activeSerial->print(F("{\"event\":\"logBusFilter\", \"mode\": "));
+  activeSerial->print(SerialCommand::busEnabled, HEX);
+  activeSerial->println(F("}"));
   
 }
+
+
+void SerialCommand::bluetooth(){
+
+  byte cmd[1];
+  int bytesRead = getCommandBody( cmd, 1 );
+  
+  switch( cmd[0] ){
+    case 1:
+      digitalWrite(BT_RESET, HIGH);
+      delay(100);
+      digitalWrite(BT_RESET, LOW);
+    break;
+    case 2:
+      passthroughMode = true;
+    break;
+    case 3:
+      passthroughMode = false;
+    break;
+  }
+  
+}
+
+
+
 
 
 int SerialCommand::getCommandBody( byte* cmd, int length )
 {
   unsigned int i = 0;
   
-  while( Serial.available() && i < length ){
-    cmd[i] = Serial.read();
+  // Loop until requested amount of bytes are sent. Needed for BT latency
+  //while( activeSerial->available() && i < length ){
+  while( i < length ){
+    cmd[i] = activeSerial->read();
+    //if(cmd[i] != 0xFF) i++;
     i++;
   }
   
@@ -313,31 +363,52 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
 
 void SerialCommand::clearBuffer()
 {
-  while(Serial.available())
-    Serial.read();
+  while(activeSerial->available())
+    activeSerial->read();
 }
 
 
 void SerialCommand::printChannelDebug()
 {
-  Serial.print(F("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.2.0\", \"memory\":\""));
-  Serial.print(freeRam());
-  Serial.println(F("\"}"));
+  
+  activeSerial->print(F("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.2.5\", \"memory\":\""));
+  activeSerial->print(freeRam());
+  activeSerial->println(F("\"}"));
   printChannelDebug( busses[0] );
   printChannelDebug( busses[1] );
   printChannelDebug( busses[2] );
   
 }
 
+void SerialCommand::printChannelDebug(CANBus channel){
+  
+  activeSerial->print( F("{\"e\":\"busdgb\", \"name\":\"") );
+  activeSerial->print( channel.name );
+  activeSerial->print( F("\", \"canctrl\":\""));
+  activeSerial->print( channel.readControl(), HEX );
+  activeSerial->print( F("\", \"status\":\""));
+  activeSerial->print( channel.readStatus(), HEX );
+  activeSerial->print( F("\", \"error\":\""));
+  activeSerial->print( channel.readRegister(EFLG), HEX );
+  activeSerial->print( F("\", \"inte\":\""));
+  activeSerial->print( channel.readIntE(), HEX );
+  activeSerial->print( F("\", \"nextTxBuffer\":\""));
+  activeSerial->print( channel.getNextTxBuffer(), DEC );
+  activeSerial->println(F("\"}"));
+  
+}
+
+
+
 void SerialCommand::dumpEeprom()
 {
   // dump eeprom
-  Serial.print(F("{\"event\":\"settings\", \"eeprom\":\""));
+  activeSerial->print(F("{\"event\":\"settings\", \"eeprom\":\""));
   for(int i=0; i<512; i++){
-    Serial.print( EEPROM.read(i), HEX );
-    if(i<511) Serial.print( ":" );
+    activeSerial->print( EEPROM.read(i), HEX );
+    if(i<511) activeSerial->print( ":" );
   }
-  Serial.println(F("\"}"));
+  activeSerial->println(F("\"}"));
 }
 
 int SerialCommand::freeRam (){
@@ -345,5 +416,7 @@ int SerialCommand::freeRam (){
   int v; 
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+
+
 
 
