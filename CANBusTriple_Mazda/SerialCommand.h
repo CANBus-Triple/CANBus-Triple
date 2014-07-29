@@ -32,13 +32,14 @@ Cmd    Bus Enabled Flags
 
 Bluetooth
 Cmd  Function
-0x08  Reset BLE112
-
-
+0x08  0x01 Reset BLE112
+0x08  0x02 Enter pass through mode to talk to BLE112
+0x08  0x03 Exit pass through mode
 
 */
 
 #define BT_RESET 8
+#define BOOT_LED 6
 
 
 
@@ -50,7 +51,7 @@ class SerialCommand : Middleware
   public:
     static byte logOutputMode;
     static unsigned int logOutputFilter;
-    static CANBus busses[3];
+    static CANBus busses[];
     static Stream* activeSerial;
     static void init( QueueArray<Message> *q, CANBus b[], int logOutput );
     static void tick();
@@ -98,6 +99,7 @@ void SerialCommand::init( QueueArray<Message> *q, CANBus b[], int logOutput )
   Serial.begin( 115200 );
   Serial1.begin( 57600 );
   
+  // TODO use passed in busses!
   // busses = { b[0], b[1], b[2] };
   SerialCommand::logOutputMode = logOutput;
   mainQueue = q;
@@ -334,6 +336,11 @@ void SerialCommand::bluetooth(){
     break;
     case 2:
       passthroughMode = true;
+      digitalWrite(BOOT_LED, HIGH);
+      delay(100);
+      digitalWrite(BOOT_LED, LOW);
+      delay(100);
+      digitalWrite(BOOT_LED, HIGH);
     break;
     case 3:
       passthroughMode = false;

@@ -69,11 +69,11 @@ Message ServiceCall::process(Message msg){
       }
       
       if(match){
-        /*
+        
         Serial.print("Got response packet for PID ");
         Serial.println( pid->name );
         SerialCommand::printMessageToSerial( msg );
-        */
+        
         
         byte start = (pid->rxd[0]/8) - 2; // Remove two bytes of length to compensate for the fact PID is not in this array. For ScanGauge compat
         byte A = msg.frame_data[start];
