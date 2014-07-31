@@ -63,6 +63,7 @@ void Settings::clear()
 
 void Settings::firstbootSetup()
 {
+  
   Settings::clear();
   
   struct cbt_settings stockSettings = {

@@ -10,15 +10,14 @@
 #include <QueueArray.h>
 #include <EEPROM.h>
 
-#include "Settings.h"
-#include "WheelButton.h"
-#include "ChannelSwap.h"
-#include "SerialCommand.h"
-#include "MazdaLED.h"
-#include "ServiceCall.h"
+// #define DEBUG_BUILD
 
 
-// CANBus Triple Rev D
+#define COMMAND_OK 0xFF
+#define COMMAND_ERROR 0x80
+
+
+// CANBus Triple Rev E
 #define BOOT_LED 6
 
 #define CAN1INT 0
@@ -41,6 +40,15 @@
 #define BT_RESET 8
 
 
+#include "Settings.h"
+#include "WheelButton.h"
+#include "ChannelSwap.h"
+#include "SerialCommand.h"
+#include "MazdaLED.h"
+#include "ServiceCall.h"
+
+
+
 
 CANBus CANBus1(CAN1SELECT, CAN1RESET, 1, "Bus 1");
 CANBus CANBus2(CAN2SELECT, CAN2RESET, 2, "Bus 2");
@@ -55,7 +63,7 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 CANBus SerialCommand::busses[] = { CANBus1, CANBus2, CANBus3 }; // TODO do this better, pass into via init method
 
 byte wheelButton = 0;
-boolean debug = false;
+
 
 // TODO Create a list of middleware for init and processing later
 // SerialCommand* middleware = &SerialCommand;
@@ -89,7 +97,10 @@ void setup(){
   CANBus1.begin();
   CANBus1.baudConfig(125);
   CANBus1.setRxInt(true);
+  
+  // CANBus1.setFilter( 0x7FF, 0x28F );
   CANBus1.setMode(NORMAL);
+  
   // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
   
   CANBus2.begin();
@@ -101,7 +112,10 @@ void setup(){
   CANBus3.begin();
   CANBus3.baudConfig(125);
   CANBus3.setRxInt(true);
-  CANBus3.setMode(NORMAL); 
+  
+  // CANBus3.setFilter( 0x290, 0x7FF );
+  CANBus3.setMode(NORMAL);
+  
   // Manually configure INT6 for Bus 3
   // EICRB |= (1<<ISC60)|(1<<ISC61); // sets the interrupt type
   // EIMSK |= (1<<INT6); // activates the interrupt
@@ -138,10 +152,9 @@ ISR(INT6_vect) {
 void loop() {
   
   // All Middleware ticks (Like loop() for middleware)
-  ServiceCall::tick();
-  MazdaLED::tick();
+  // ServiceCall::tick();
+  // MazdaLED::tick();
   SerialCommand::tick();
-  // Naptime::tick();
   
   
   if( digitalRead(CAN1INT_D) == 0 ) readBus(CANBus1);
@@ -155,12 +168,14 @@ void loop() {
     processMessage( readQueue.pop() );
   }
   
-  if( debug && !writeQueue.isEmpty() ){ 
+  #ifdef DEBUG_BUILD
+  if( !writeQueue.isEmpty() ){ 
     SerialCommand::activeSerial->print(F("{queueCount:")); 
     SerialCommand::activeSerial->print( writeQueue.count(), DEC ); 
     SerialCommand::activeSerial->print( readQueue.count(), DEC ); 
     SerialCommand::activeSerial->println(F("}"));
   }
+  #endif
   
   boolean success = true;
   while( !writeQueue.isEmpty() && success ){
@@ -174,7 +189,10 @@ void loop() {
     if( !success ){
       // TX Failure, add back to queue
       writeQueue.push(msg);
-      if(debug) SerialCommand::activeSerial->println("ALL TX BUFFERS FULL ON " + busses[msg.busId-1].name );
+      
+      #ifdef DEBUG_BUILD
+        SerialCommand::activeSerial->println("ALL TX BUFFERS FULL ON " + busses[msg.busId-1].name );
+      #endif
     }
     
   }
@@ -272,12 +290,12 @@ boolean sendMessage( Message msg, CANBus bus ){
       break;
   }
   
-  if(debug){
+  #ifdef DEBUG_BUILD
     SerialCommand::activeSerial->print(F("Sent a message on TXB"));
     SerialCommand::activeSerial->print( ch, DEC );
     SerialCommand::activeSerial->print(F(" via bus "));
     SerialCommand::activeSerial->println( bus.name );
-  }
+  #endif
   
   digitalWrite( BOOT_LED, LOW );
   
@@ -326,9 +344,9 @@ void processMessage( Message msg ){
   
   // All Middleware process calls (Augment incoming CAN packets)
   msg = SerialCommand::process( msg );
-  msg = ServiceCall::process( msg );
-  msg = MazdaLED::process( msg );
-  msg = ChannelSwap::process( msg );
+  // msg = ServiceCall::process( msg );
+  // msg = MazdaLED::process( msg );
+  // msg = ChannelSwap::process( msg );
   // msg = Naptime::process( msg );
   
   if( msg.dispatch == true ){

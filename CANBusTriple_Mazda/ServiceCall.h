@@ -92,11 +92,6 @@ Message ServiceCall::process(Message msg){
         else
           base = A;
         
-        /*
-        Serial.println(A);
-        Serial.println(B);
-        */
-        
         unsigned int mult = (pid->mth[0] << 8) + pid->mth[1];
         unsigned int div  = (pid->mth[2] << 8) + pid->mth[3];
         unsigned int add  = (pid->mth[4] << 8) + pid->mth[5];
@@ -192,13 +187,6 @@ void ServiceCall::sendNextServiceCall( struct pid pid[] ){
     msg.dispatch = true;
     mainQueue->push(msg);
     
-    /*
-    Serial.print("Service call sent pid settings storage location: ");
-    Serial.print(i);
-    Serial.print(" ");
-    Serial.println( pid[i].name );
-    // SerialCommand::printMessageToSerial( msg );
-    */
     
   }
   

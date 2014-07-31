@@ -7,11 +7,22 @@
 0x01 0x02 Dump eeprom value
 0x01 0x03 read and save eeprom
 0x01 0x04 restore eeprom to stock values
+0x01 0x16 Reboot to bootloader
+
 
 Send CAN frame
 Cmd    Bus id  PID    data 0-7                  length
 0x02   01      290    00 00 00 00 00 00 00 00   8
 
+TODO:
+Set logging output
+Cmd  Bus  On/Off Filter1 Filter2
+0x03 0x01 0x01   0x290   0x291   // Set loggin on Bus 1 to ON
+0x03 0x01 0x00                   // Set loggin on Bus 1 to OFF
+
+
+
+## OLD FILTER
 Set log mode and filter
 Cmd    Mode   Filer PID
 0x03   1      0290
@@ -21,13 +32,18 @@ Cmd    Mode   Filer PID
         3 Show lower than filter PID
         4 Show higher than filter PID
 
-
+MERGE THIS WITH COMMAND 0x03
 Enable / Disable logging of busses
 Cmd    Bus Enabled Flags
 0x04   0x7 (B111)         // Enable all 
 0x04   0x1 (B001)         // Enable only Bus 1
 0x04   0x2 (B010)         // Enable only Bus 2
 0x04   0x4 (B100)         // Enable only Bus 3
+
+END TODO
+
+
+
 
 
 Bluetooth
@@ -38,9 +54,6 @@ Cmd  Function
 
 */
 
-#define BT_RESET 8
-#define BOOT_LED 6
-
 
 
 #include "Middleware.h"
@@ -50,13 +63,14 @@ class SerialCommand : Middleware
 {
   public:
     static byte logOutputMode;
-    static unsigned int logOutputFilter;
+    // static unsigned int logOutputFilter;
     static CANBus busses[];
     static Stream* activeSerial;
     static void init( QueueArray<Message> *q, CANBus b[], int logOutput );
     static void tick();
     static Message process( Message msg );
     static void printMessageToSerial(Message msg);
+    static void resetToBootloader();
   private:
     static int freeRam();
     static QueueArray<Message>* mainQueue;
@@ -79,18 +93,14 @@ class SerialCommand : Middleware
     
 };
 
-byte SerialCommand::buffer[512] = {};
+
 
 // Defaults
 byte SerialCommand::logOutputMode = 0x01;
-unsigned int SerialCommand::logOutputFilter = 0;
+// unsigned int SerialCommand::logOutputFilter = 0;
 QueueArray<Message> *SerialCommand::mainQueue;
-//CANBus SerialCommand::busses[3];
-byte SerialCommand::busEnabled = 0x7; // Start with all busses enabled
-
+byte SerialCommand::busEnabled = 0x7;               // Start with all busses logging enabled
 boolean SerialCommand::passthroughMode = false;
-
-
 Stream* SerialCommand::activeSerial = &Serial;
 
 
@@ -138,11 +148,6 @@ Message SerialCommand::process( Message msg )
 void SerialCommand::printMessageToSerial( Message msg )
 {
   
-  // PID Filter
-  if( logOutputMode == 2 && msg.frame_id != logOutputFilter ) return;
-  if( logOutputMode == 3 && msg.frame_id < logOutputFilter ) return;
-  if( logOutputMode == 4 && msg.frame_id > logOutputFilter ) return;
-  
   // Bus Filter
   byte flag;
   flag = 0x1 << (msg.busId-1);
@@ -152,6 +157,7 @@ void SerialCommand::printMessageToSerial( Message msg )
   
   
   // Output to serial as json string
+  // TODO - Conver to pure binary  
   activeSerial->print(F("{\"packet\": {\"status\":\""));
   activeSerial->print( msg.busStatus,HEX);
   activeSerial->print(F("\",\"channel\":\""));
@@ -215,19 +221,22 @@ void SerialCommand::settingsCall()
   
   // Debug Command
   switch( cmd[0] ){
-    case 1:
+    case 0x01:
       printChannelDebug();
     break;
-    case 2:
+    case 0x02:
       dumpEeprom();
     break;
-    case 3:
+    case 0x03:
       // TODO Read from input and store settings
       getAndSaveEeprom();
     break;
-    case 4:
+    case 0x04:
       Settings::firstbootSetup();
-    break;    
+    break;
+    case 0x16:
+      resetToBootloader();
+    break;
   }
   
   
@@ -236,19 +245,24 @@ void SerialCommand::settingsCall()
 
 void SerialCommand::logCommand()
 {
-  byte cmd[3];
-  int bytesRead = getCommandBody( cmd, 3 );
+  byte cmd[6];
+  int bytesRead = getCommandBody( cmd, 6 );
   
-  logOutputMode = cmd[0];
-  logOutputFilter = (cmd[1]<<8) + cmd[2];
-  activeSerial->print(F("{\"event\":\"logMode\", \"mode\": "));
-  activeSerial->print(logOutputMode);
-  activeSerial->print(F(", \"filter\": "));
-  activeSerial->print(logOutputFilter, HEX);
-  activeSerial->println(F("}"));
+  if( cmd[0] < 1 || cmd[0] > 3 ){
+    activeSerial->println(COMMAND_ERROR);
+    return;
+  }
+  CANBus bus = busses[ cmd[0]-1 ];
   
-  // Change this system to set RXB0CTRL and RXB1CTRL on each CAN Bus for efficiency
-  // This may ot may not work, as the MCP2515 has to be in Configuration mode to set filters
+  logOutputMode = cmd[1];
+  
+  bus.setMode(CONFIGURATION);
+  bus.clearFilters();
+  if( cmd[2] + cmd[3] + cmd[4] + cmd[5] ) 
+    bus.setFilter( (cmd[2]<<8) + cmd[3], (cmd[4]<<8) + cmd[5] );
+  bus.setMode(NORMAL);
+  
+  activeSerial->println(COMMAND_OK);
   
 }
 
@@ -392,19 +406,29 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( F("{\"e\":\"busdgb\", \"name\":\"") );
   activeSerial->print( channel.name );
   activeSerial->print( F("\", \"canctrl\":\""));
-  activeSerial->print( channel.readControl(), HEX );
+  activeSerial->print( channel.readRegister(CANCTRL), HEX );
   activeSerial->print( F("\", \"status\":\""));
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
   activeSerial->print( channel.readRegister(EFLG), HEX );
-  activeSerial->print( F("\", \"inte\":\""));
-  activeSerial->print( channel.readIntE(), HEX );
   activeSerial->print( F("\", \"nextTxBuffer\":\""));
   activeSerial->print( channel.getNextTxBuffer(), DEC );
   activeSerial->println(F("\"}"));
   
 }
 
+
+void SerialCommand::resetToBootloader()
+{
+  cli();
+  UDCON = 1;
+  USBCON = (1<<FRZCLK);  // disable USB
+  UCSR1B = 0;
+  delay(5);
+  EIMSK = 0; PCICR = 0; SPCR = 0; ACSR = 0; EECR = 0; ADCSRA = 0;
+  TIMSK0 = 0; TIMSK1 = 0; TIMSK3 = 0;
+  asm volatile("jmp 0x7000");
+}
 
 
 void SerialCommand::dumpEeprom()
