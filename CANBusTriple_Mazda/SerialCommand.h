@@ -14,47 +14,24 @@ Send CAN frame
 Cmd    Bus id  PID    data 0-7                  length
 0x02   01      290    00 00 00 00 00 00 00 00   8
 
-TODO:
+
 Set logging output
 Cmd  Bus  On/Off Filter1 Filter2
 0x03 0x01 0x01   0x290   0x291   // Set loggin on Bus 1 to ON
 0x03 0x01 0x00                   // Set loggin on Bus 1 to OFF
 
 
-
-## OLD FILTER
-Set log mode and filter
-Cmd    Mode   Filer PID
-0x03   1      0290
-  
-  Modes 1 Log all
-        2 Show only filter PID
-        3 Show lower than filter PID
-        4 Show higher than filter PID
-
-MERGE THIS WITH COMMAND 0x03
-Enable / Disable logging of busses
-Cmd    Bus Enabled Flags
-0x04   0x7 (B111)         // Enable all 
-0x04   0x1 (B001)         // Enable only Bus 1
-0x04   0x2 (B010)         // Enable only Bus 2
-0x04   0x4 (B100)         // Enable only Bus 3
-
-END TODO
-
-
-
-
-
 Bluetooth
 Cmd  Function
 0x08  0x01 Reset BLE112
 0x08  0x02 Enter pass through mode to talk to BLE112
-0x08  0x03 Exit pass through mode
-
+0x08  0x03 Exit pass through mode 
+TODO: Implenent this ^^^
 */
 
 
+// #define JSON_OUT
+#define BYTE_OUT_MODE HEX
 
 #include "Middleware.h"
 
@@ -62,11 +39,10 @@ Cmd  Function
 class SerialCommand : Middleware
 {
   public:
-    static byte logOutputMode;
     // static unsigned int logOutputFilter;
     static CANBus busses[];
     static Stream* activeSerial;
-    static void init( QueueArray<Message> *q, CANBus b[], int logOutput );
+    static void init( QueueArray<Message> *q, CANBus b[] );
     static void tick();
     static Message process( Message msg );
     static void printMessageToSerial(Message msg);
@@ -84,10 +60,9 @@ class SerialCommand : Middleware
     static void dumpEeprom();
     static void getAndSaveEeprom();
     static void logCommand();
-    static void setBusEnableFlags();
     static void bluetooth();
     static boolean passthroughMode;
-    static byte busEnabled;
+    static byte busLogEnabled;
     static Message newMessage;
     static byte buffer[];
     
@@ -96,22 +71,20 @@ class SerialCommand : Middleware
 
 
 // Defaults
-byte SerialCommand::logOutputMode = 0x01;
-// unsigned int SerialCommand::logOutputFilter = 0;
 QueueArray<Message> *SerialCommand::mainQueue;
-byte SerialCommand::busEnabled = 0x7;               // Start with all busses logging enabled
+byte SerialCommand::busLogEnabled = 0;               // Start with all busses logging disabled
 boolean SerialCommand::passthroughMode = false;
 Stream* SerialCommand::activeSerial = &Serial;
 
 
-void SerialCommand::init( QueueArray<Message> *q, CANBus b[], int logOutput )
+void SerialCommand::init( QueueArray<Message> *q, CANBus b[] )
 {
   Serial.begin( 115200 );
   Serial1.begin( 57600 );
   
   // TODO use passed in busses!
   // busses = { b[0], b[1], b[2] };
-  SerialCommand::logOutputMode = logOutput;
+  
   mainQueue = q;
 }
 
@@ -140,7 +113,7 @@ void SerialCommand::tick()
 
 Message SerialCommand::process( Message msg )
 {
-  if(logOutputMode > 0) printMessageToSerial(msg);
+  printMessageToSerial(msg);
   return msg;
 }
 
@@ -151,33 +124,47 @@ void SerialCommand::printMessageToSerial( Message msg )
   // Bus Filter
   byte flag;
   flag = 0x1 << (msg.busId-1);
-  if( !(SerialCommand::busEnabled & flag) ){
+  if( !(SerialCommand::busLogEnabled & flag) ){
     return;
   }
   
   
   // Output to serial as json string
-  // TODO - Conver to pure binary  
-  activeSerial->print(F("{\"packet\": {\"status\":\""));
-  activeSerial->print( msg.busStatus,HEX);
-  activeSerial->print(F("\",\"channel\":\""));
-  activeSerial->print( busses[msg.busId-1].name );
-  activeSerial->print(F("\",\"length\":\""));
-  activeSerial->print(msg.length,HEX);
-  activeSerial->print(F("\",\"id\":\""));
-  activeSerial->print(msg.frame_id,HEX);
-  activeSerial->print(F("\",\"timestamp\":\""));
-  activeSerial->print(millis(),DEC);
-  activeSerial->print(F("\",\"payload\":[\""));
   
+  #ifdef JSON_OUT
   
-  for (int i=0; i<8; i++) {
-    activeSerial->print(msg.frame_data[i],HEX);
-    if( i<7 ) activeSerial->print(F("\",\""));
-  }
+    activeSerial->print(F("{\"packet\": {\"status\":\""));
+    activeSerial->print( msg.busStatus,HEX);
+    activeSerial->print(F("\",\"channel\":\""));
+    activeSerial->print( busses[msg.busId-1].name );
+    activeSerial->print(F("\",\"length\":\""));
+    activeSerial->print(msg.length,HEX);
+    activeSerial->print(F("\",\"id\":\""));
+    activeSerial->print(msg.frame_id,HEX);
+    activeSerial->print(F("\",\"timestamp\":\""));
+    activeSerial->print(millis(),DEC);
+    activeSerial->print(F("\",\"payload\":[\""));
+    for (int i=0; i<8; i++) {
+      activeSerial->print(msg.frame_data[i],HEX);
+      if( i<7 ) activeSerial->print(F("\",\""));
+    }
+    activeSerial->print(F("\"]}}"));
+    activeSerial->println();
+    
+  #else
   
-  activeSerial->print(F("\"]}}"));
-  activeSerial->println();
+    activeSerial->print( 0x03, BYTE_OUT_MODE ); // Prefix with logging command
+    activeSerial->print( msg.busId, BYTE_OUT_MODE );
+    activeSerial->print( msg.frame_id, BYTE_OUT_MODE );
+    
+    for (int i=0; i<8; i++) 
+      activeSerial->print(msg.frame_data[i], BYTE_OUT_MODE);
+    
+    activeSerial->print( msg.length, BYTE_OUT_MODE );
+    activeSerial->print( msg.busStatus, BYTE_OUT_MODE );
+    activeSerial->println();
+    
+  #endif
   
 }
 
@@ -192,17 +179,12 @@ void SerialCommand::processCommand(int command)
       settingsCall();
     break;
     case 0x02:
-      // Send command
-      // Ex: 02 03 02 92 66 66 66 66 66 66 66 66 08 
       getAndSend();
     break;
     case 0x03:
-      // Log output toggle
-      // Ex: 03 02 02 90
       logCommand();
     break;
     case 0x04:
-      setBusEnableFlags();
     break;
     case 0x08:
       bluetooth();
@@ -245,7 +227,7 @@ void SerialCommand::settingsCall()
 
 void SerialCommand::logCommand()
 {
-  byte cmd[6];
+  byte cmd[6] = {0};
   int bytesRead = getCommandBody( cmd, 6 );
   
   if( cmd[0] < 1 || cmd[0] > 3 ){
@@ -254,13 +236,21 @@ void SerialCommand::logCommand()
   }
   CANBus bus = busses[ cmd[0]-1 ];
   
-  logOutputMode = cmd[1];
+  if( cmd[1] )
+    SerialCommand::busLogEnabled |= cmd[1] << (cmd[0]-1);
+    else
+    SerialCommand::busLogEnabled &= cmd[1] << (cmd[0]-1);
   
-  bus.setMode(CONFIGURATION);
-  bus.clearFilters();
-  if( cmd[2] + cmd[3] + cmd[4] + cmd[5] ) 
-    bus.setFilter( (cmd[2]<<8) + cmd[3], (cmd[4]<<8) + cmd[5] );
-  bus.setMode(NORMAL);
+  // Set filter if we got pids in the command
+  if( bytesRead > 2 ){
+    
+    bus.setMode(CONFIGURATION);
+    bus.clearFilters();
+    if( cmd[2] + cmd[3] + cmd[4] + cmd[5] ) 
+      bus.setFilter( (cmd[2]<<8) + cmd[3], (cmd[4]<<8) + cmd[5] );
+    bus.setMode(NORMAL);
+    
+  }
   
   activeSerial->println(COMMAND_OK);
   
@@ -324,18 +314,6 @@ void SerialCommand::getAndSend()
 }
 
 
-void SerialCommand::setBusEnableFlags(){
-  
-  byte cmd[1];
-  int bytesRead = getCommandBody( cmd, 1 );
-  
-  SerialCommand::busEnabled = cmd[0];
-  activeSerial->print(F("{\"event\":\"logBusFilter\", \"mode\": "));
-  activeSerial->print(SerialCommand::busEnabled, HEX);
-  activeSerial->println(F("}"));
-  
-}
-
 
 void SerialCommand::bluetooth(){
 
@@ -373,7 +351,7 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
   
   // Loop until requested amount of bytes are sent. Needed for BT latency
   //while( activeSerial->available() && i < length ){
-  while( i < length ){
+  while( i < length && activeSerial->available() ){
     cmd[i] = activeSerial->read();
     //if(cmd[i] != 0xFF) i++;
     i++;
@@ -434,12 +412,11 @@ void SerialCommand::resetToBootloader()
 void SerialCommand::dumpEeprom()
 {
   // dump eeprom
-  activeSerial->print(F("{\"event\":\"settings\", \"eeprom\":\""));
   for(int i=0; i<512; i++){
     activeSerial->print( EEPROM.read(i), HEX );
     if(i<511) activeSerial->print( ":" );
   }
-  activeSerial->println(F("\"}"));
+  
 }
 
 int SerialCommand::freeRam (){

@@ -21,16 +21,21 @@ class ServiceCall : Middleware
     static byte getServiceIndex();
     static byte incServiceIndex();
     static byte decServiceIndex();
+    static void setFilterPids();
+    static byte filterPids[ NUM_PID_TO_PROCESS ];
 };
 
 
 QueueArray<Message>* ServiceCall::mainQueue;
 unsigned long ServiceCall::lastServiceCallSent = millis();
 byte * ServiceCall::index = &cbt_settings.displayIndex;
+byte ServiceCall::filterPids[NUM_PID_TO_PROCESS];
+
 
 void ServiceCall::init( QueueArray<Message> *q )
 {
   mainQueue = q;
+  setFilterPids();
 }
 
 
@@ -69,13 +74,14 @@ Message ServiceCall::process(Message msg){
       }
       
       if(match){
-        
+        /*
         Serial.print("Got response packet for PID ");
         Serial.println( pid->name );
         SerialCommand::printMessageToSerial( msg );
+        */
         
-        
-        byte start = (pid->rxd[0]/8) - 2; // Remove two bytes of length to compensate for the fact PID is not in this array. For ScanGauge compat
+        // Remove two bytes of length to compensate for the fact PID is not in this array. For ScanGauge compat
+        byte start = (pid->rxd[0]/8) - 2;
         byte A = msg.frame_data[start];
         byte B;
         
@@ -126,6 +132,7 @@ void ServiceCall::setServiceIndex(byte i)
 {
   *index = i;
   saveSettings();
+  ServiceCall::setFilterPids();
 }
 
 byte ServiceCall::incServiceIndex()
@@ -137,6 +144,8 @@ byte ServiceCall::incServiceIndex()
    *index = *index + 1;
   
   ServiceCall::saveSettings();
+  ServiceCall::setFilterPids();
+  
   return *index;
 }
 
@@ -149,8 +158,22 @@ byte ServiceCall::decServiceIndex()
    *index = *index-1;
   
   ServiceCall::saveSettings();
+  ServiceCall::setFilterPids();
+  
   return *index;
 }
+
+void ServiceCall::setFilterPids()
+{
+  
+  byte ii = 0;
+  for( int i=*index; i<*index+NUM_PID_TO_PROCESS; i++ ){
+    filterPids[ii] = (cbt_settings.pids[i].txd[0] << 8) + cbt_settings.pids[i].txd[1];
+    ii++;
+  }
+  
+}
+
 
 void ServiceCall::saveSettings()
 {

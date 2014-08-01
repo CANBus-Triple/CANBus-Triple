@@ -97,10 +97,7 @@ void setup(){
   CANBus1.begin();
   CANBus1.baudConfig(125);
   CANBus1.setRxInt(true);
-  
-  // CANBus1.setFilter( 0x7FF, 0x28F );
   CANBus1.setMode(NORMAL);
-  
   // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
   
   CANBus2.begin();
@@ -112,10 +109,7 @@ void setup(){
   CANBus3.begin();
   CANBus3.baudConfig(125);
   CANBus3.setRxInt(true);
-  
-  // CANBus3.setFilter( 0x290, 0x7FF );
   CANBus3.setMode(NORMAL);
-  
   // Manually configure INT6 for Bus 3
   // EICRB |= (1<<ISC60)|(1<<ISC61); // sets the interrupt type
   // EIMSK |= (1<<INT6); // activates the interrupt
@@ -127,7 +121,7 @@ void setup(){
   delay(100);
   
   // Middleware setup
-  SerialCommand::init( &writeQueue, busses, 0 );
+  SerialCommand::init( &writeQueue, busses );
   ServiceCall::init( &writeQueue );
   MazdaLED::init( &writeQueue, cbt_settings.displayEnabled );
   
@@ -152,8 +146,8 @@ ISR(INT6_vect) {
 void loop() {
   
   // All Middleware ticks (Like loop() for middleware)
-  // ServiceCall::tick();
-  // MazdaLED::tick();
+  ServiceCall::tick();
+  MazdaLED::tick();
   SerialCommand::tick();
   
   
@@ -236,11 +230,13 @@ void loop() {
          // Decrement service pid
          ServiceCall::decServiceIndex();
          MazdaLED::showNewPageMessage();
+         CANBus2.setFilter( ServiceCall::filterPids[0], ServiceCall::filterPids[1] );
        break;
        case B01000001:
          // Increment service pid 
          ServiceCall::incServiceIndex();
          MazdaLED::showNewPageMessage();
+         CANBus2.setFilter( ServiceCall::filterPids[0], ServiceCall::filterPids[1] );
        break;
        case B01000010:
          toggleMazdaLed();
@@ -344,10 +340,9 @@ void processMessage( Message msg ){
   
   // All Middleware process calls (Augment incoming CAN packets)
   msg = SerialCommand::process( msg );
-  // msg = ServiceCall::process( msg );
-  // msg = MazdaLED::process( msg );
-  // msg = ChannelSwap::process( msg );
-  // msg = Naptime::process( msg );
+  msg = ServiceCall::process( msg );
+  msg = MazdaLED::process( msg );
+  msg = ChannelSwap::process( msg );
   
   if( msg.dispatch == true ){
     writeQueue.push( msg );
