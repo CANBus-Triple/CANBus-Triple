@@ -11,10 +11,7 @@
 #include <EEPROM.h>
 
 // #define DEBUG_BUILD
-
-
-#define COMMAND_OK 0xFF
-#define COMMAND_ERROR 0x80
+#define USE_MIDDLEWARE
 
 
 // CANBus Triple Rev E
@@ -122,8 +119,11 @@ void setup(){
   
   // Middleware setup
   SerialCommand::init( &writeQueue, busses );
-  ServiceCall::init( &writeQueue );
-  MazdaLED::init( &writeQueue, cbt_settings.displayEnabled );
+  
+  #ifdef USE_MIDDLEWARE
+    ServiceCall::init( &writeQueue );
+    MazdaLED::init( &writeQueue, cbt_settings.displayEnabled );
+  #endif
   
 }
 
@@ -146,9 +146,12 @@ ISR(INT6_vect) {
 void loop() {
   
   // All Middleware ticks (Like loop() for middleware)
-  ServiceCall::tick();
-  MazdaLED::tick();
   SerialCommand::tick();
+  
+  #ifdef USE_MIDDLEWARE
+    ServiceCall::tick();
+    MazdaLED::tick();
+  #endif
   
   
   if( digitalRead(CAN1INT_D) == 0 ) readBus(CANBus1);
@@ -340,9 +343,13 @@ void processMessage( Message msg ){
   
   // All Middleware process calls (Augment incoming CAN packets)
   msg = SerialCommand::process( msg );
-  msg = ServiceCall::process( msg );
-  msg = MazdaLED::process( msg );
-  msg = ChannelSwap::process( msg );
+  
+  #ifdef USE_MIDDLEWARE
+    msg = ServiceCall::process( msg );
+    msg = MazdaLED::process( msg );
+    msg = ChannelSwap::process( msg );
+  #endif
+  
   
   if( msg.dispatch == true ){
     writeQueue.push( msg );

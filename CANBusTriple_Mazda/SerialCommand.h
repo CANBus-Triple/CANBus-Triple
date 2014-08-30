@@ -2,26 +2,40 @@
 /*
 // Serial Commands
 
-0x01      System and settings
-0x01 0x01 Print Debug to Serial
-0x01 0x02 Dump eeprom value
-0x01 0x03 read and save eeprom
-0x01 0x04 restore eeprom to stock values
-0x01 0x16 Reboot to bootloader
+System Info and EEPROM
+----------------------
+0x01 0x01        Print System Debug to Serial
+0x01 0x02        Dump eeprom value
+0x01 0x03        read and save eeprom
+0x01 0x04        restore eeprom to stock values
+0x01 0x10 0x01   Print Bus 1 Debug to Serial
+0x01 0x10 0x02   Print Bus 1 Debug to Serial
+0x01 0x10 0x03   Print Bus 1 Debug to Serial
+0x01 0x16        Reboot to bootloader
 
 
-Send CAN frame
+Send CAN Packet
+---------------
 Cmd    Bus id  PID    data 0-7                  length
 0x02   01      290    00 00 00 00 00 00 00 00   8
 
 
-Set logging output
-Cmd  Bus  On/Off Filter1 Filter2
-0x03 0x01 0x01   0x290   0x291   // Set loggin on Bus 1 to ON
-0x03 0x01 0x00                   // Set loggin on Bus 1 to OFF
+Set logging output (Filters are optional)
+--------------------------------------------------
+Cmd  Bus  On/Off Message ID 1   Message ID 2
+0x03 0x01 0x01   0x290          0x291   // Set logging on Bus 1 to ON
+0x03 0x01 0x00                          // Set logging on Bus 1 to OFF
 
 
-Bluetooth
+Set Bluetooth Message ID filter
+----------------------------------------
+Cmd  Bus  Message ID 1 Message ID 2
+0x04 0x01 0x290        0x291          // Enable Message ID 290 output over BT
+0x04 0x01 0x0000       0x0000         // Disable
+
+
+Bluetooth Functions
+-------------------
 Cmd  Function
 0x08  0x01 Reset BLE112
 0x08  0x02 Enter pass through mode to talk to BLE112
@@ -31,7 +45,10 @@ TODO: Implenent this ^^^
 
 
 // #define JSON_OUT
-#define BYTE_OUT_MODE HEX
+
+#define COMMAND_OK 0xFF
+#define COMMAND_ERROR 0x80
+#define NEWLINE "\r"
 
 #include "Middleware.h"
 
@@ -50,17 +67,20 @@ class SerialCommand : Middleware
   private:
     static int freeRam();
     static QueueArray<Message>* mainQueue;
-    static void printChannelDebug(CANBus channel);
+    static void printChannelDebug();
+    static void printChannelDebug(CANBus);
     static void processCommand(int command);
     static int  getCommandBody( byte* cmd, int length );
     static void clearBuffer();
     static void getAndSend();
-    static void printChannelDebug();
+    static void printSystemDebug();
     static void settingsCall();
     static void dumpEeprom();
     static void getAndSaveEeprom();
     static void logCommand();
     static void bluetooth();
+    static void setBluetoothFilter();
+    static char btMessageIdFilters[][2];
     static boolean passthroughMode;
     static byte busLogEnabled;
     static Message newMessage;
@@ -75,6 +95,12 @@ QueueArray<Message> *SerialCommand::mainQueue;
 byte SerialCommand::busLogEnabled = 0;               // Start with all busses logging disabled
 boolean SerialCommand::passthroughMode = false;
 Stream* SerialCommand::activeSerial = &Serial;
+
+char SerialCommand::btMessageIdFilters[][2] = {
+                    {0x28F,0x290},
+                    {0x0,0x0},
+                    {0x28F,0x290},
+                    };
 
 
 void SerialCommand::init( QueueArray<Message> *q, CANBus b[] )
@@ -98,15 +124,14 @@ void SerialCommand::tick()
     return;
   }
   
+  if( Serial1.available() > 0 ){
+    activeSerial = &Serial1;
+    processCommand( Serial1.read() );
+  }
   
   if( Serial.available() > 0 ){
     activeSerial = &Serial;
     processCommand( Serial.read() );
-  }
-   
-  if( Serial1.available() > 0 ){
-    activeSerial = &Serial1;
-    processCommand( Serial1.read() );
   }
   
 }
@@ -129,10 +154,9 @@ void SerialCommand::printMessageToSerial( Message msg )
   }
   
   
-  // Output to serial as json string
   
   #ifdef JSON_OUT
-  
+    // Output to serial as json string
     activeSerial->print(F("{\"packet\": {\"status\":\""));
     activeSerial->print( msg.busStatus,HEX);
     activeSerial->print(F("\",\"channel\":\""));
@@ -152,17 +176,25 @@ void SerialCommand::printMessageToSerial( Message msg )
     activeSerial->println();
     
   #else
-  
-    activeSerial->print( 0x03, BYTE_OUT_MODE ); // Prefix with logging command
-    activeSerial->print( msg.busId, BYTE_OUT_MODE );
-    activeSerial->print( msg.frame_id, BYTE_OUT_MODE );
+    
+    // Bluetooth filter
+    // TODO TEST
+    if( activeSerial == &Serial1 &&
+        btMessageIdFilters[msg.busId][0] != msg.frame_id &&
+        btMessageIdFilters[msg.busId][1] != msg.frame_id
+        ) return;
+    
+    activeSerial->write( 0x03 ); // Prefix with logging command
+    activeSerial->write( msg.busId );
+    activeSerial->write( msg.frame_id >> 8 );
+    activeSerial->write( msg.frame_id );
     
     for (int i=0; i<8; i++) 
-      activeSerial->print(msg.frame_data[i], BYTE_OUT_MODE);
+      activeSerial->write(msg.frame_data[i]);
     
-    activeSerial->print( msg.length, BYTE_OUT_MODE );
-    activeSerial->print( msg.busStatus, BYTE_OUT_MODE );
-    activeSerial->println();
+    activeSerial->write( msg.length );
+    activeSerial->write( msg.busStatus );
+    activeSerial->write( NEWLINE );
     
   #endif
   
@@ -173,6 +205,8 @@ void SerialCommand::printMessageToSerial( Message msg )
 
 void SerialCommand::processCommand(int command)
 {
+  
+  delay(20);
   
   switch( command ){
     case 0x01:
@@ -185,6 +219,7 @@ void SerialCommand::processCommand(int command)
       logCommand();
     break;
     case 0x04:
+      setBluetoothFilter();
     break;
     case 0x08:
       bluetooth();
@@ -197,14 +232,14 @@ void SerialCommand::processCommand(int command)
 
 void SerialCommand::settingsCall()
 {
-
+  
   byte cmd[1];
   int bytesRead = getCommandBody( cmd, 1 );
   
   // Debug Command
   switch( cmd[0] ){
     case 0x01:
-      printChannelDebug();
+      printSystemDebug();
     break;
     case 0x02:
       dumpEeprom();
@@ -216,6 +251,9 @@ void SerialCommand::settingsCall()
     case 0x04:
       Settings::firstbootSetup();
     break;
+    case 0x10:
+        printChannelDebug();
+    break;
     case 0x16:
       resetToBootloader();
     break;
@@ -225,13 +263,28 @@ void SerialCommand::settingsCall()
 }
 
 
+
+void SerialCommand::setBluetoothFilter(){
+
+  byte cmd[5];
+  int bytesRead = getCommandBody( cmd, 5 );
+  
+  if( cmd[0] >= 0 && cmd[0] <= 3 ){
+    SerialCommand::btMessageIdFilters[cmd[0]][0] = (cmd[1] << 8)+cmd[2];
+    SerialCommand::btMessageIdFilters[cmd[0]][1] = (cmd[3] << 8)+cmd[4];
+  }
+  
+}
+
+
+
 void SerialCommand::logCommand()
 {
   byte cmd[6] = {0};
   int bytesRead = getCommandBody( cmd, 6 );
   
   if( cmd[0] < 1 || cmd[0] > 3 ){
-    activeSerial->println(COMMAND_ERROR);
+    activeSerial->write(COMMAND_ERROR);
     return;
   }
   CANBus bus = busses[ cmd[0]-1 ];
@@ -252,7 +305,8 @@ void SerialCommand::logCommand()
     
   }
   
-  activeSerial->println(COMMAND_OK);
+  activeSerial->write(COMMAND_OK);
+  activeSerial->write(NEWLINE);
   
 }
 
@@ -367,15 +421,21 @@ void SerialCommand::clearBuffer()
 }
 
 
-void SerialCommand::printChannelDebug()
+void SerialCommand::printSystemDebug()
 {
-  
   activeSerial->print(F("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.2.5\", \"memory\":\""));
   activeSerial->print(freeRam());
-  activeSerial->println(F("\"}"));
-  printChannelDebug( busses[0] );
-  printChannelDebug( busses[1] );
-  printChannelDebug( busses[2] );
+  activeSerial->println(F("\"}"));  
+}
+
+void SerialCommand::printChannelDebug(){
+  
+  byte cmd[1];
+  getCommandBody( cmd, 1 );
+  
+  if( cmd[0] > -1 && cmd[0] <= 3 )
+    printChannelDebug( busses[cmd[0]-1] );
+  
   
 }
 
@@ -424,7 +484,6 @@ int SerialCommand::freeRam (){
   int v; 
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
-
 
 
 

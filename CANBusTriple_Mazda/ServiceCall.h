@@ -2,7 +2,7 @@
 #include "Middleware.h"
 
 #define NUM_PID_TO_PROCESS 2
-
+#define BLUETOOTH_SENSORS
 
 class ServiceCall : Middleware
 {
@@ -23,6 +23,7 @@ class ServiceCall : Middleware
     static byte decServiceIndex();
     static void setFilterPids();
     static byte filterPids[ NUM_PID_TO_PROCESS ];
+    static void updateBTSensors( pid *pid );
 };
 
 
@@ -52,6 +53,7 @@ void ServiceCall::tick()
 
 Message ServiceCall::process(Message msg){
   
+  
   // Process service call responses 
   for( int i=*index; i<*index+NUM_PID_TO_PROCESS; i++ ){
     
@@ -62,7 +64,7 @@ Message ServiceCall::process(Message msg){
     // If the PID returned is 8 higher than the request pid we've recieved a response
     if(msg.frame_id == ((pid->txd[0]<<8)+pid->txd[1]+0x08) ){
       
-      // Match RXD
+      // Match RXF
       int rxfi = 0;
       boolean match = true;
       while( rxfi < 6 && pid->rxf[rxfi] ){
@@ -109,7 +111,26 @@ Message ServiceCall::process(Message msg){
         divResult = divResult * mult;
         base = divResult + add;
         
-        pid->value = base;
+        if( pid->value != base ){
+          pid->value = base;
+          
+          #ifdef BLUETOOTH_SENSORS
+          // Send over UART to Bluetooth
+          char out[7];
+          out[0] = 0xe7;
+          out[1] = 0x83;
+          out[2] = i+1;
+          out[3] = base >> 8;
+          out[4] = base & 0xFF;
+          out[5] = 0x0D;
+          out[6] = 0x0A;
+          delay(10);
+          Serial1.print(out);
+          #endif
+          
+        }
+        
+        
         
       }
       
@@ -120,6 +141,7 @@ Message ServiceCall::process(Message msg){
   
   return msg;
 }
+
 
 
 
