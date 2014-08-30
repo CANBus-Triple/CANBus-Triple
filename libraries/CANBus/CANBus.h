@@ -100,10 +100,56 @@ CNF3=b'00000010'=0x02 = SOF = 0  & WAKFIL = 0 & PS2 = 3
 #define TXB2DLC 0x55
 #define CANCTRL 0x0F //Mode control register
 #define CANSTAT 0x0E // Status register
-#define CANINTE 0x2B // Interrupt Enable???
+#define CANINTE 0x2B // Interrupt Enable
+#define CANINTF 0x2C // Interrupt Flag
 #define EFLG 0x2D // Error Register address
 
+
+#define RXB0CTRL 0x60
+#define RXB1CTRL 0x70
+
+#define RXF0SIDH	0x00
+#define RXF0SIDL	0x01
+#define RXF0EID8	0x02
+#define RXF0EID0	0x03
+#define RXF1SIDH	0x04
+#define RXF1SIDL	0x05
+#define RXF1EID8	0x06
+#define RXF1EID0	0x07
+#define RXF2SIDH	0x08
+#define RXF2SIDL	0x09
+#define RXF2EID8	0x0A
+#define RXF2EID0	0x0B
+#define RXF3SIDH	0x10
+#define RXF3SIDL	0x11
+#define RXF3EID8	0x12
+#define RXF3EID0	0x13
+#define RXF4SIDH	0x14
+#define RXF4SIDL	0x15
+#define RXF4EID8	0x16
+#define RXF4EID0	0x17
+#define RXF5SIDH	0x18
+#define RXF5SIDL	0x19
+#define RXF5EID8	0x1A
+#define RXF5EID0	0x1B
+
+#define RXM0SIDH	0x20
+#define RXM0SIDL	0x21
+#define RXM1SIDH	0x24
+#define RXM1SIDL	0x25
+
+
+
 #include "Arduino.h"
+
+struct MessageNew {
+    byte length;
+    unsigned short frame_id;
+    byte frame_data[8];
+    unsigned int busStatus;
+    unsigned int busId;
+    bool dispatch;
+};
 
 enum CANMode {CONFIGURATION,NORMAL,SLEEP,LISTEN,LOOPBACK};
 
@@ -118,7 +164,6 @@ public:
     String name;
     unsigned int busId;
     
-    
     CANBus( int ss, int reset, unsigned int bid, String nameString );
     CANBus( int ss, int reset );
     
@@ -131,18 +176,23 @@ public:
 	//Method added to enable testing in loopback mode.(pcruce_at_igpp.ucla.edu)
 	void setMode(CANMode mode) ;        //put CAN controller in one of five modes
     
-    
     // Method to send CLKPRE (Clock output scaler) 1,2,4,8 available values.
     void setClkPre(int mode);
+    
+    // Set RX Filter registers
+    void setFilter(int, int);
+    void clearFilters();
     
     int getNextTxBuffer();
     
     // Interrupt control register methods
     void setRxInt(bool b);
-    byte readIntE();
+    
     
     byte readRegister( int addr );
-    byte readErrorRegister();
+    void writeRegister( int addr, byte value );
+    void writeRegister( int addr, byte value, byte value2 );
+    
     
     // byte readTXBNCTRL(int bufferid);
     
@@ -167,7 +217,8 @@ public:
 	//(readStatus() & 0x40) == 0x40 means frame in buffer 1
     byte readStatus();
     
-    byte readControl();
+    // byte readControl();
+    // byte readErrorRegister();
 
     void load_0(byte identifier, byte data);//load transmit buffer X
 	void load_1(byte identifier, byte data);

@@ -153,6 +153,42 @@ int CANBus::getNextTxBuffer(){
     
 }
 
+void CANBus::setFilter( int filter0, int filter1 ){
+
+    // RXB0
+    byte SIDH = filter0 >> 3;
+    byte SIDL = filter0 << 5;
+    
+    this->writeRegister(RXF0SIDH, SIDH, SIDL );
+    this->writeRegister(RXF2SIDH, SIDH, SIDL );
+    
+    // RXB1
+    SIDH = filter1 >> 3;
+    SIDL = filter1 << 5;
+    
+    this->writeRegister(RXF1SIDH, SIDH, SIDL );
+    this->writeRegister(RXF3SIDH, SIDH, SIDL );
+    this->writeRegister(RXF4SIDH, SIDH, SIDL );
+    this->writeRegister(RXF5SIDH, SIDH, SIDL );
+    
+    // Set mask to match everything
+    int combined = filter0 | filter1;
+    SIDH = combined >> 3;
+    SIDL = combined << 5;
+    this->writeRegister(RXM0SIDH, SIDH, SIDL );
+    this->writeRegister(RXM1SIDH, SIDH, SIDL );
+    
+    
+}
+
+void CANBus::clearFilters(){
+    this->writeRegister(RXM0SIDH, 0, 0 );
+    this->writeRegister(RXM1SIDH, 0, 0 );
+}
+
+
+
+
 
 
 
@@ -177,6 +213,27 @@ void CANBus::setRxInt(bool b){
 	digitalWrite(_ss, HIGH);
     
 }
+
+
+// Clear interrupts
+/*
+void CANBus::clearInterrupt(){
+    
+    byte mask,writeVal;
+    
+    writeVal = 0x00;
+    
+    mask = 0x03;
+    
+	digitalWrite(_ss, LOW);
+	SPI.transfer(BIT_MODIFY);
+	SPI.transfer(CANINTF);
+	SPI.transfer(mask);
+	SPI.transfer(writeVal);
+	digitalWrite(_ss, HIGH);
+    
+}
+*/
 
 
 // Set clock output scaler
@@ -369,10 +426,8 @@ void CANBus::readDATA_ff_1(byte* length_out,byte *data_out,unsigned short *id_ou
 	(*id_out) = ((((unsigned short) id_h) << 3) + ((id_l & 0xE0) >> 5)); //repack identifier
 }
 
-	//Adding method to read status register
-	//can be used to determine whether a frame was received.
-	//(readStatus() & 0x80) == 0x80 means frame in buffer 0
-	//(readStatus() & 0x40) == 0x40 means frame in buffer 1
+
+
 byte CANBus::readStatus() 
 {
 	byte retVal;
@@ -396,20 +451,33 @@ byte CANBus::readRegister( int addr )
 	return retVal;
 }
 
-
-byte CANBus::readIntE() 
+void CANBus::writeRegister( int addr, byte value )
 {
-	byte retVal;
-	digitalWrite(_ss, LOW);
-	SPI.transfer(READ);
-    SPI.transfer(CANINTE);
-	retVal = SPI.transfer(0xFF);
+    digitalWrite(_ss, LOW);
+	delay(10);
+	SPI.transfer(WRITE);
+	SPI.transfer(addr);
+	SPI.transfer(value);
+	delay(10);
 	digitalWrite(_ss, HIGH);
-	return retVal;
-    
+	delay(10);
+}
+
+void CANBus::writeRegister( int addr, byte value, byte value2 )
+{
+    digitalWrite(_ss, LOW);
+	delay(10);
+	SPI.transfer(WRITE);
+	SPI.transfer(addr);
+	SPI.transfer(value);
+    SPI.transfer(value2);
+	delay(10);
+	digitalWrite(_ss, HIGH);
+	delay(10);
 }
 
 
+/*
 byte CANBus::readControl() 
 {
 	byte retVal;
@@ -419,9 +487,10 @@ byte CANBus::readControl()
 	retVal = SPI.transfer(0xFF);
 	digitalWrite(_ss, HIGH);
 	return retVal;
-    
 }
+*/
 
+/*
 // Read Error Register
 byte CANBus::readErrorRegister()
 {
@@ -433,6 +502,7 @@ byte CANBus::readErrorRegister()
 	digitalWrite(_ss, HIGH);
 	return retVal;
 }
+*/
 
 /*
 // Check Transmit Buffer Controls.
