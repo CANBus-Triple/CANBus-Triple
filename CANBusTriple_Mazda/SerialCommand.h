@@ -53,6 +53,12 @@ TODO: Implenent this ^^^
 #include "Middleware.h"
 
 
+struct middleware_command {
+  byte command;
+  void (*cb)(byte[], int);
+};
+
+
 class SerialCommand : Middleware
 {
   public:
@@ -63,6 +69,7 @@ class SerialCommand : Middleware
     static void tick();
     static Message process( Message msg );
     static void printMessageToSerial(Message msg);
+    static void registerCommand(byte commandId, void (*cb)(byte[], int));
     static void resetToBootloader();
   private:
     static int freeRam();
@@ -85,7 +92,6 @@ class SerialCommand : Middleware
     static byte busLogEnabled;
     static Message newMessage;
     static byte buffer[];
-    
 };
 
 
@@ -96,6 +102,12 @@ byte SerialCommand::busLogEnabled = 0;               // Start with all busses lo
 boolean SerialCommand::passthroughMode = false;
 Stream* SerialCommand::activeSerial = &Serial;
 
+//byte SerialCommand::mwCommandIndex = 0;
+byte mwCommandIndex;
+struct middleware_command mw_cmds[8];
+
+
+// TODO Finish this
 char SerialCommand::btMessageIdFilters[][2] = {
                     {0x28F,0x290},
                     {0x0,0x0},
@@ -224,7 +236,24 @@ void SerialCommand::processCommand(int command)
     case 0x08:
       bluetooth();
     break;
+    default:
+    
+      // Check for Middleware commands
+      for(int i=0; i<mwCommandIndex; i++ ){
+        if( mw_cmds[i].command == command ){
+          
+          byte cmd[8];
+          int bytesRead = getCommandBody( cmd, 8 );
+          (*mw_cmds[i].cb)( cmd, bytesRead );
+          
+          break;
+        }
+      }
+    
+    break;
   }
+  
+  
   
   SerialCommand::clearBuffer();
 }
@@ -452,6 +481,16 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( F("\", \"nextTxBuffer\":\""));
   activeSerial->print( channel.getNextTxBuffer(), DEC );
   activeSerial->println(F("\"}"));
+  
+}
+
+
+void SerialCommand::registerCommand(byte commandId, void (*cb)(byte[], int))
+{
+  
+  mw_cmds[mwCommandIndex].command = commandId;
+  mw_cmds[mwCommandIndex].cb = cb;
+  mwCommandIndex++;
   
 }
 

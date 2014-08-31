@@ -26,7 +26,7 @@ class MazdaLED : Middleware
     static unsigned long animationCounter;
     static Message process( Message msg );
     static char* currentLcdString();
-    
+    static void commandHandler(byte*, int);
 };
 
 boolean MazdaLED::enabled = cbt_settings.displayEnabled;
@@ -49,7 +49,25 @@ void MazdaLED::init( QueueArray<Message> *q, byte enabled )
 {
   mainQueue = q;
   MazdaLED::enabled = (enabled == 1);
+  
+  // Register a serial command callback handler
+  SerialCommand::registerCommand(0x16, MazdaLED::commandHandler);
 }
+
+
+void MazdaLED::commandHandler(byte* bytes, int length)
+{
+  for( int i=0; i<length; i++ )
+    Serial.print( bytes[i], DEC );
+  Serial.println("");
+  
+  char chars[length];
+  for(unsigned int i = 0; i < length; i++)
+    chars[i] = (char)bytes[i];
+  
+  MazdaLED::showStatusMessage(chars, 8000);
+}
+
 
 void MazdaLED::tick()
 {

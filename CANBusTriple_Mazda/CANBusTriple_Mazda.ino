@@ -350,7 +350,6 @@ void processMessage( Message msg ){
     msg = ChannelSwap::process( msg );
   #endif
   
-  
   if( msg.dispatch == true ){
     writeQueue.push( msg );
   }
