@@ -18,12 +18,14 @@ class MazdaLED : Middleware
     static void showStatusMessage(char* str, int time);
     static char lcdString[13];
     static char lcdStockString[13];
-    static char lcdStatusString[13];
+    static char lcdStatusString[];
+    static byte lcdStatusStringLength;
+    static char lcdStatusStringSlice[];
     static unsigned long stockOverrideTimer;
     static unsigned long statusOverrideTimer;
     static void setOverrideTime( int n );
     static void setStatusTime( int n );
-    static unsigned long animationCounter;
+    static unsigned int animationCounter;
     static Message process( Message msg );
     static char* currentLcdString();
     static void commandHandler(byte*, int);
@@ -35,9 +37,10 @@ int MazdaLED::fastUpdateDelay = 500;
 QueueArray<Message>* MazdaLED::mainQueue;
 char MazdaLED::lcdString[13] = "CANBusTriple";
 char MazdaLED::lcdStockString[13] = "            ";
-char MazdaLED::lcdStatusString[13] = "            ";
-
-unsigned long MazdaLED::animationCounter = 0;
+char MazdaLED::lcdStatusString[65] = "                                                                ";
+byte MazdaLED::lcdStatusStringLength = 12;
+char MazdaLED::lcdStatusStringSlice[13] = "            ";
+unsigned int MazdaLED::animationCounter = 0;
 unsigned long MazdaLED::stockOverrideTimer = 4000;
 unsigned long MazdaLED::statusOverrideTimer = 0;
 
@@ -57,15 +60,24 @@ void MazdaLED::init( QueueArray<Message> *q, byte enabled )
 
 void MazdaLED::commandHandler(byte* bytes, int length)
 {
-  for( int i=0; i<length; i++ )
-    Serial.print( bytes[i], DEC );
-  Serial.println("");
   
-  char chars[length];
-  for(unsigned int i = 0; i < length; i++)
+  char chars[65];
+  for(unsigned int i = 0; i < length; i++){
     chars[i] = (char)bytes[i];
+  }
   
-  MazdaLED::showStatusMessage(chars, 8000);
+  // Serial.println(length);
+  
+  if( length > 12 ){
+    lcdStatusStringLength = animationCounter = length;
+    MazdaLED::showStatusMessage(chars, 4000+(length*200));
+  }else{
+    animationCounter = 0;
+    MazdaLED::showStatusMessage(chars, 7000);
+  }
+  
+  
+  
 }
 
 
@@ -93,7 +105,7 @@ void MazdaLED::showStatusMessage(char* str, int time){
 void MazdaLED::pushNewMessage(){
   
   char* lcd = currentLcdString();
-    
+  
   Message msg;
   msg.busId = 3;
   msg.frame_id = 0x290;
@@ -147,9 +159,21 @@ void MazdaLED::pushNewMessage(){
 char* MazdaLED::currentLcdString(){
   if( stockOverrideTimer > millis() )
     return lcdStockString;
-  else if( statusOverrideTimer > millis() )
-    return lcdStatusString;
-  else
+  else if( statusOverrideTimer > millis() ){
+    // Return a slice of the lcdStatusString (Animation)
+    sprintf( lcdStatusStringSlice, "            " );
+    
+    for(int i=0; i<12; i++)
+      if( (lcdStatusStringLength - animationCounter)+i < lcdStatusStringLength )
+        lcdStatusStringSlice[i] = lcdStatusString[(lcdStatusStringLength - animationCounter)+i];
+    
+    // Serial.println(lcdStatusStringSlice);
+    // Serial.println("___");
+    
+    if(animationCounter > 0) animationCounter--;
+    
+    return lcdStatusStringSlice;
+  }else
     return lcdString;
 }
 
@@ -160,6 +184,7 @@ void MazdaLED::setOverrideTime( int n ){
 
 void MazdaLED::setStatusTime( int n ){
   statusOverrideTimer = millis() + n;
+  // animationCounter = 0;
 }
 
 
@@ -277,13 +302,6 @@ Message MazdaLED::process(Message msg)
   if( msg.frame_id == 0x201 ){
     msg.dispatch = false;
   }
-  
-  // Serial.println(lcdString);
-  
-  
-  // Animation
-  // strcpy( MazdaLED::lcdString, "CANBusTriple" );
-  // animationCounter++;
   
    
   return msg;

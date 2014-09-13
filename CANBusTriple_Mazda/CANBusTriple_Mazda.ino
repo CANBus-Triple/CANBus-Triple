@@ -41,8 +41,9 @@
 #include "WheelButton.h"
 #include "ChannelSwap.h"
 #include "SerialCommand.h"
-#include "MazdaLED.h"
 #include "ServiceCall.h"
+#include "MazdaLED.h"
+
 
 
 
@@ -193,9 +194,10 @@ void loop() {
     }
     
   }
-  
-  //* MOVE TO MORE LOGICAL PLACE
-    
+
+
+
+  //* MOVE TO MORE LOGICAL PLACE  
   byte button = WheelButton::getButtonDown();
   
   if( wheelButton != button ){
@@ -247,6 +249,7 @@ void loop() {
      }
  
   }
+
 
   
 } // End loop()

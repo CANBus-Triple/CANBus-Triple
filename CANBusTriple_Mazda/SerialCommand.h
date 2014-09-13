@@ -49,6 +49,7 @@ TODO: Implenent this ^^^
 #define COMMAND_OK 0xFF
 #define COMMAND_ERROR 0x80
 #define NEWLINE "\r"
+#define MAX_MW_CALLBACKS 8
 
 #include "Middleware.h"
 
@@ -104,7 +105,7 @@ Stream* SerialCommand::activeSerial = &Serial;
 
 //byte SerialCommand::mwCommandIndex = 0;
 byte mwCommandIndex;
-struct middleware_command mw_cmds[8];
+struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
 // TODO Finish this
@@ -243,7 +244,8 @@ void SerialCommand::processCommand(int command)
         if( mw_cmds[i].command == command ){
           
           byte cmd[8];
-          int bytesRead = getCommandBody( cmd, 8 );
+          int bytesRead = getCommandBody( cmd, 64 );
+          delay(10);
           (*mw_cmds[i].cb)( cmd, bytesRead );
           
           break;
@@ -433,10 +435,8 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
   unsigned int i = 0;
   
   // Loop until requested amount of bytes are sent. Needed for BT latency
-  //while( activeSerial->available() && i < length ){
   while( i < length && activeSerial->available() ){
     cmd[i] = activeSerial->read();
-    //if(cmd[i] != 0xFF) i++;
     i++;
   }
   
@@ -487,6 +487,8 @@ void SerialCommand::printChannelDebug(CANBus channel){
 
 void SerialCommand::registerCommand(byte commandId, void (*cb)(byte[], int))
 {
+  // About if we've reached the max number of registered callbacks
+  if( mwCommandIndex >= MAX_MW_CALLBACKS ) return;
   
   mw_cmds[mwCommandIndex].command = commandId;
   mw_cmds[mwCommandIndex].cb = cb;
