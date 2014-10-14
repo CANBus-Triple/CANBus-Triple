@@ -176,9 +176,9 @@ void Settings::firstbootSetup()
   
   // Slow flash to show first boot successful
   for(int i=0;i<6;i++){
-    digitalWrite( 7, HIGH );
+    digitalWrite( BOOT_LED, HIGH );
     delay(500);
-    digitalWrite( 7, LOW );
+    digitalWrite( BOOT_LED, LOW );
     delay(500);
   }
   

@@ -47,9 +47,9 @@ void CANBus::begin()//constructor for initializing can module.
 	SPI.setBitOrder(MSBFIRST);
 
 	digitalWrite(_reset,LOW); /* RESET CAN CONTROLLER*/
-	delay(50);
-	digitalWrite(_reset,HIGH);
 	delay(100);
+	digitalWrite(_reset,HIGH);
+	delay(20);
 }
 
 

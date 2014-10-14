@@ -66,8 +66,6 @@ void MazdaLED::commandHandler(byte* bytes, int length)
     chars[i] = (char)bytes[i];
   }
   
-  // Serial.println(length);
-  
   if( length > 12 ){
     lcdStatusStringLength = animationCounter = length;
     MazdaLED::showStatusMessage(chars, 4000+(length*200));
@@ -163,12 +161,13 @@ char* MazdaLED::currentLcdString(){
     // Return a slice of the lcdStatusString (Animation)
     sprintf( lcdStatusStringSlice, "            " );
     
-    for(int i=0; i<12; i++)
-      if( (lcdStatusStringLength - animationCounter)+i < lcdStatusStringLength )
-        lcdStatusStringSlice[i] = lcdStatusString[(lcdStatusStringLength - animationCounter)+i];
-    
-    // Serial.println(lcdStatusStringSlice);
-    // Serial.println("___");
+    // for(int i=0; i<12; i++)
+      // if( (lcdStatusStringLength - animationCounter)+i < lcdStatusStringLength )
+        // lcdStatusStringSlice[i] = lcdStatusString[(lcdStatusStringLength - animationCounter)+i];
+      if( animationCounter > 0 )
+        memcpy ( &lcdStatusStringSlice+(animationCounter-12), &lcdStatusString, 12 );
+      else
+        memcpy ( &lcdStatusStringSlice, &lcdStatusString, 12 );
     
     if(animationCounter > 0) animationCounter--;
     

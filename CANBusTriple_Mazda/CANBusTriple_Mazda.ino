@@ -3,7 +3,8 @@
 ***  https://github.com/etx/CANBus-Triple
 ***/
 
-
+#include <avr/power.h>
+#include <avr/wdt.h>
 #include <SPI.h>
 #include <CANBus.h>
 #include <Message.h>
@@ -12,10 +13,11 @@
 
 // #define DEBUG_BUILD
 #define USE_MIDDLEWARE
+// #define SLEEP_ENABLE
 
 
-// CANBus Triple Rev E
-#define BOOT_LED 6
+// CANBus Triple Rev F
+#define BOOT_LED 13
 
 #define CAN1INT 0
 #define CAN1INT_D 3
@@ -34,8 +36,6 @@
 #define ISC60 0 // Set INT6 Low
 #define ISC61 0
 
-#define BT_RESET 8
-
 
 #include "Settings.h"
 #include "WheelButton.h"
@@ -43,6 +43,7 @@
 #include "SerialCommand.h"
 #include "ServiceCall.h"
 #include "MazdaLED.h"
+#include "Naptime.h"
 
 
 
@@ -58,7 +59,8 @@ QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
 
 CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
-CANBus SerialCommand::busses[] = { CANBus1, CANBus2, CANBus3 }; // TODO do this better, pass into via init method
+CANBus SerialCommand::busses[] = { CANBus1, CANBus2, CANBus3 }; // TODO do this better, pass into via init metho
+CANBus Naptime::busses[] = { CANBus1, CANBus2, CANBus3 };
 
 byte wheelButton = 0;
 
@@ -70,53 +72,56 @@ byte wheelButton = 0;
 void setup(){
   
   /*
-  *  BLE112 Setup
-  */
-  pinMode(BT_RESET, OUTPUT);
-  digitalWrite(BT_RESET, LOW);
-  
-  /*
   *  Boot LED
   */
   pinMode( BOOT_LED, OUTPUT );
   
   
+  pinMode( CAN1INT_D, INPUT );
+  pinMode( CAN2INT_D, INPUT );
+  pinMode( CAN3INT_D, INPUT );
+  pinMode( CAN1RESET, OUTPUT );
+  pinMode( CAN2RESET, OUTPUT );
+  pinMode( CAN3RESET, OUTPUT );
+  pinMode( CAN1SELECT, OUTPUT );
+  pinMode( CAN2SELECT, OUTPUT );
+  pinMode( CAN3SELECT, OUTPUT );
+  
+  digitalWrite(CAN1RESET, LOW);
+  digitalWrite(CAN2RESET, LOW);
+  digitalWrite(CAN3RESET, LOW);
+  
+  delay(100);
+  
   Settings::init();
   
-  for (int b = 0; b<2; b++) {
-    digitalWrite( BOOT_LED, HIGH );
-    delay(50);
-    digitalWrite( BOOT_LED, LOW );
-    delay(50);
-  }
-  
+  delay(50);
   
   // Setup CAN Busses 
   CANBus1.begin();
+  CANBus1.setClkPre(1);
   CANBus1.baudConfig(125);
   CANBus1.setRxInt(true);
+  CANBus1.clearFilters();
   CANBus1.setMode(NORMAL);
   // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
   
   CANBus2.begin();
   CANBus2.baudConfig(500);
   CANBus2.setRxInt(true);
+  CANBus2.clearFilters();
   CANBus2.setMode(NORMAL);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
   
   CANBus3.begin();
   CANBus3.baudConfig(125);
   CANBus3.setRxInt(true);
+  CANBus3.clearFilters();
   CANBus3.setMode(NORMAL);
   // Manually configure INT6 for Bus 3
   // EICRB |= (1<<ISC60)|(1<<ISC61); // sets the interrupt type
   // EIMSK |= (1<<INT6); // activates the interrupt
   
-  
-  digitalWrite( BOOT_LED, HIGH );
-  delay(100);
-  digitalWrite( BOOT_LED, LOW );
-  delay(100);
   
   // Middleware setup
   SerialCommand::init( &writeQueue, busses );
@@ -124,7 +129,20 @@ void setup(){
   #ifdef USE_MIDDLEWARE
     ServiceCall::init( &writeQueue );
     MazdaLED::init( &writeQueue, cbt_settings.displayEnabled );
+    #ifdef SLEEP_ENABLE
+      Naptime::init( busses );
+    #endif
   #endif
+  
+  
+  for (int b = 0; b<5; b++) {
+    digitalWrite( BOOT_LED, HIGH );
+    delay(50);
+    digitalWrite( BOOT_LED, LOW );
+    delay(50);
+  }
+  
+  wdt_enable(WDTO_1S);
   
 }
 
@@ -143,33 +161,36 @@ ISR(INT6_vect) {
 
 
 
-
 void loop() {
   
-  // All Middleware ticks (Like loop() for middleware)
+  // All Middleware updates
   SerialCommand::tick();
   
   #ifdef USE_MIDDLEWARE
     ServiceCall::tick();
     MazdaLED::tick();
+    #ifdef SLEEP_ENABLE
+      Naptime::tick();
+    #endif
   #endif
   
-  
+
   if( digitalRead(CAN1INT_D) == 0 ) readBus(CANBus1);
   if( digitalRead(CAN2INT_D) == 0 ) readBus(CANBus2);
   if( digitalRead(CAN3INT_D) == 0 ) readBus(CANBus3);
   
   
   // Process message stack
-  
   if( !readQueue.isEmpty() && !writeQueue.isFull() ){
     processMessage( readQueue.pop() );
   }
   
+  
   #ifdef DEBUG_BUILD
   if( !writeQueue.isEmpty() ){ 
-    SerialCommand::activeSerial->print(F("{queueCount:")); 
-    SerialCommand::activeSerial->print( writeQueue.count(), DEC ); 
+    SerialCommand::activeSerial->print(F("{queueCount: writeQueue ")); 
+    SerialCommand::activeSerial->print( writeQueue.count(), DEC );
+    SerialCommand::activeSerial->print( " readQueue " ); 
     SerialCommand::activeSerial->print( readQueue.count(), DEC ); 
     SerialCommand::activeSerial->println(F("}"));
   }
@@ -250,7 +271,9 @@ void loop() {
  
   }
 
-
+  
+  // Pet the dog
+  wdt_reset();
   
 } // End loop()
 
@@ -311,6 +334,11 @@ boolean sendMessage( Message msg, CANBus bus ){
 
 void readBus( CANBus bus ){
   
+  #ifdef DEBUG_BUILD
+    Serial.print("Attempting to read ");
+    Serial.println(bus.busId);
+    #endif
+  
   // TODO Cleanup and optimize
   
   // Abort if readQueue is full
@@ -320,11 +348,17 @@ void readBus( CANBus bus ){
   
   // Check buffer RX0
   if( (rx_status & 0x1) == 0x1 ){
+    #ifdef DEBUG_BUILD
+    Serial.print(bus.busId);
+    Serial.println(" read RX0");
+    #endif
+    
     Message msg;
     msg.busStatus = rx_status;
     msg.busId = bus.busId;
     bus.readDATA_ff_0( &msg.length, msg.frame_data, &msg.frame_id );
     readQueue.push(msg);
+    // processMessage( msg );
   }
   
   // Abort if readQueue is full
@@ -332,11 +366,17 @@ void readBus( CANBus bus ){
   
   // Check buffer RX1
   if( (rx_status & 0x2) == 0x2 ) {
+    #ifdef DEBUG_BUILD
+    Serial.print(bus.busId);
+    Serial.println(" read RX1");
+    #endif
+    
     Message msg;
     msg.busStatus = rx_status;
     msg.busId = bus.busId;
     bus.readDATA_ff_1( &msg.length, msg.frame_data, &msg.frame_id );
     readQueue.push(msg);
+    // processMessage( msg );
   }
   
 }
@@ -351,6 +391,9 @@ void processMessage( Message msg ){
     msg = ServiceCall::process( msg );
     msg = MazdaLED::process( msg );
     msg = ChannelSwap::process( msg );
+    #ifdef SLEEP_ENABLE
+      // msg = Naptime::process( msg );
+    #endif
   #endif
   
   if( msg.dispatch == true ){

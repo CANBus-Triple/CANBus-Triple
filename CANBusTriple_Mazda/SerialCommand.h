@@ -407,9 +407,9 @@ void SerialCommand::bluetooth(){
   
   switch( cmd[0] ){
     case 1:
-      digitalWrite(BT_RESET, HIGH);
-      delay(100);
-      digitalWrite(BT_RESET, LOW);
+      // digitalWrite(BT_RESET, HIGH);
+      // delay(100);
+      // digitalWrite(BT_RESET, LOW);
     break;
     case 2:
       passthroughMode = true;
@@ -452,6 +452,7 @@ void SerialCommand::clearBuffer()
 
 void SerialCommand::printSystemDebug()
 {
+  Serial.println(clock_prescale_get());
   activeSerial->print(F("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.2.5\", \"memory\":\""));
   activeSerial->print(freeRam());
   activeSerial->println(F("\"}"));  
