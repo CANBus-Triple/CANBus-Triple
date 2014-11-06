@@ -452,7 +452,6 @@ void SerialCommand::clearBuffer()
 
 void SerialCommand::printSystemDebug()
 {
-  Serial.println(clock_prescale_get());
   activeSerial->print(F("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.2.5\", \"memory\":\""));
   activeSerial->print(freeRam());
   activeSerial->println(F("\"}"));  

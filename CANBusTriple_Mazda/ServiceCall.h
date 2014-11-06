@@ -22,7 +22,7 @@ class ServiceCall : Middleware
     static byte incServiceIndex();
     static byte decServiceIndex();
     static void setFilterPids();
-    static byte filterPids[ NUM_PID_TO_PROCESS ];
+    static int  filterPids[ NUM_PID_TO_PROCESS ];
     static void updateBTSensors( pid *pid );
 };
 
@@ -30,7 +30,7 @@ class ServiceCall : Middleware
 QueueArray<Message>* ServiceCall::mainQueue;
 unsigned long ServiceCall::lastServiceCallSent = millis();
 byte * ServiceCall::index = &cbt_settings.displayIndex;
-byte ServiceCall::filterPids[NUM_PID_TO_PROCESS];
+int ServiceCall::filterPids[NUM_PID_TO_PROCESS];
 
 
 void ServiceCall::init( QueueArray<Message> *q )
@@ -124,7 +124,7 @@ Message ServiceCall::process(Message msg){
           out[4] = base & 0xFF;
           out[5] = 0x0D;
           out[6] = 0x0A;
-          delay(10);
+          delay(1);
           Serial1.print(out);
           #endif
           
@@ -190,7 +190,9 @@ void ServiceCall::setFilterPids()
   
   byte ii = 0;
   for( int i=*index; i<*index+NUM_PID_TO_PROCESS; i++ ){
-    filterPids[ii] = (cbt_settings.pids[i].txd[0] << 8) + cbt_settings.pids[i].txd[1];
+    // Add 8 to TXD message ID, this is the ID that the response will use
+    filterPids[ii] = int((cbt_settings.pids[i].txd[0] << 8) + cbt_settings.pids[i].txd[1]) + 0x08;
+    Serial.println(filterPids[ii]);
     ii++;
   }
   

@@ -3,7 +3,6 @@
 ***  https://github.com/etx/CANBus-Triple
 ***/
 
-#include <avr/power.h>
 #include <avr/wdt.h>
 #include <SPI.h>
 #include <CANBus.h>
@@ -13,11 +12,13 @@
 
 // #define DEBUG_BUILD
 #define USE_MIDDLEWARE
-// #define SLEEP_ENABLE
+#define SLEEP_ENABLE
 
 
 // CANBus Triple Rev F
 #define BOOT_LED 13
+
+#define BT_SLEEP 8
 
 #define CAN1INT 0
 #define CAN1INT_D 3
@@ -25,16 +26,14 @@
 #define CAN1RESET 4
 
 #define CAN2INT 1
-#define CAN2INT_D 2
+#define CAN2INT_D 2 
 #define CAN2SELECT 10
 #define CAN2RESET 12
 
-// #define CAN3INT 6
+#define CAN3INT 4
 #define CAN3INT_D 7
 #define CAN3SELECT 5
 #define CAN3RESET 11
-#define ISC60 0 // Set INT6 Low
-#define ISC61 0
 
 
 #include "Settings.h"
@@ -44,9 +43,6 @@
 #include "ServiceCall.h"
 #include "MazdaLED.h"
 #include "Naptime.h"
-
-
-
 
 
 CANBus CANBus1(CAN1SELECT, CAN1RESET, 1, "Bus 1");
@@ -72,6 +68,19 @@ byte wheelButton = 0;
 void setup(){
   
   /*
+  *  Power LED
+  */
+  DDRE |= B00000100;
+  PORTE |= B00000100;
+  
+  /*
+  *  BLE112 Init
+  */
+  pinMode( BT_SLEEP, OUTPUT );
+  digitalWrite( BT_SLEEP, HIGH ); // Keep BLE112 Awake
+  
+  
+  /*
   *  Boot LED
   */
   pinMode( BOOT_LED, OUTPUT );
@@ -91,17 +100,16 @@ void setup(){
   digitalWrite(CAN2RESET, LOW);
   digitalWrite(CAN3RESET, LOW);
   
-  delay(100);
-  
   Settings::init();
-  
-  delay(50);
+  delay(1);
   
   // Setup CAN Busses 
   CANBus1.begin();
   CANBus1.setClkPre(1);
   CANBus1.baudConfig(125);
   CANBus1.setRxInt(true);
+  CANBus1.bitModify(RXB0CTRL, 0x04, 0x04); // Set buffer rollover enabled
+  CANBus1.bitModify(CNF2, 0x20, 0x20); // Enable wake-up filter
   CANBus1.clearFilters();
   CANBus1.setMode(NORMAL);
   // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
@@ -109,6 +117,7 @@ void setup(){
   CANBus2.begin();
   CANBus2.baudConfig(500);
   CANBus2.setRxInt(true);
+  CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
   CANBus2.setMode(NORMAL);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
@@ -116,11 +125,11 @@ void setup(){
   CANBus3.begin();
   CANBus3.baudConfig(125);
   CANBus3.setRxInt(true);
+  CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus3.clearFilters();
   CANBus3.setMode(NORMAL);
-  // Manually configure INT6 for Bus 3
-  // EICRB |= (1<<ISC60)|(1<<ISC61); // sets the interrupt type
-  // EIMSK |= (1<<INT6); // activates the interrupt
+  // attachInterrupt(CAN3INT, handleInterrupt3, LOW);
+  
   
   
   // Middleware setup
@@ -129,11 +138,15 @@ void setup(){
   #ifdef USE_MIDDLEWARE
     ServiceCall::init( &writeQueue );
     MazdaLED::init( &writeQueue, cbt_settings.displayEnabled );
-    #ifdef SLEEP_ENABLE
-      Naptime::init( busses );
-    #endif
+  #endif
+  #ifdef SLEEP_ENABLE
+    Naptime::init( busses, 0x0472 );
   #endif
   
+  // Setup CAN bus 2 filter
+  CANBus2.setMode(CONFIGURATION);
+  CANBus2.setFilter( ServiceCall::filterPids[0], ServiceCall::filterPids[1] );
+  CANBus2.setMode(NORMAL);
   
   for (int b = 0; b<5; b++) {
     digitalWrite( BOOT_LED, HIGH );
@@ -142,7 +155,7 @@ void setup(){
     delay(50);
   }
   
-  wdt_enable(WDTO_1S);
+  // wdt_enable(WDTO_1S);
   
 }
 
@@ -150,13 +163,10 @@ void setup(){
 *  Interrupt Handlers
 */
 void handleInterrupt1(){
-  
 }
 void handleInterrupt2(){
-  
 }
-ISR(INT6_vect) {
-  
+void handleInterrupt3(){ 
 }
 
 
@@ -169,9 +179,9 @@ void loop() {
   #ifdef USE_MIDDLEWARE
     ServiceCall::tick();
     MazdaLED::tick();
-    #ifdef SLEEP_ENABLE
-      Naptime::tick();
-    #endif
+  #endif
+  #ifdef SLEEP_ENABLE
+    Naptime::tick();
   #endif
   
 
@@ -202,7 +212,6 @@ void loop() {
     Message msg = writeQueue.pop();
     CANBus channel = busses[msg.busId-1];
     
-    //SerialCommand::printMessageToSerial(msg);
     success = sendMessage( msg, channel );
     
     if( !success ){
@@ -256,13 +265,17 @@ void loop() {
          // Decrement service pid
          ServiceCall::decServiceIndex();
          MazdaLED::showNewPageMessage();
+         CANBus2.setMode(CONFIGURATION);
          CANBus2.setFilter( ServiceCall::filterPids[0], ServiceCall::filterPids[1] );
+         CANBus2.setMode(NORMAL);
        break;
        case B01000001:
          // Increment service pid 
          ServiceCall::incServiceIndex();
          MazdaLED::showNewPageMessage();
+         CANBus2.setMode(CONFIGURATION);
          CANBus2.setFilter( ServiceCall::filterPids[0], ServiceCall::filterPids[1] );
+         CANBus2.setMode(NORMAL);
        break;
        case B01000010:
          toggleMazdaLed();
@@ -273,7 +286,7 @@ void loop() {
 
   
   // Pet the dog
-  wdt_reset();
+  // wdt_reset();
   
 } // End loop()
 
@@ -337,7 +350,13 @@ void readBus( CANBus bus ){
   #ifdef DEBUG_BUILD
     Serial.print("Attempting to read ");
     Serial.println(bus.busId);
-    #endif
+  #endif
+  
+  /*
+  #ifdef SLEEP_ENABLE
+    Naptime::reset();
+  #endif
+  */
   
   // TODO Cleanup and optimize
   
@@ -387,13 +406,14 @@ void processMessage( Message msg ){
   // All Middleware process calls (Augment incoming CAN packets)
   msg = SerialCommand::process( msg );
   
+  #ifdef SLEEP_ENABLE
+    msg = Naptime::process( msg );
+  #endif
+  
   #ifdef USE_MIDDLEWARE
     msg = ServiceCall::process( msg );
     msg = MazdaLED::process( msg );
     msg = ChannelSwap::process( msg );
-    #ifdef SLEEP_ENABLE
-      // msg = Naptime::process( msg );
-    #endif
   #endif
   
   if( msg.dispatch == true ){
