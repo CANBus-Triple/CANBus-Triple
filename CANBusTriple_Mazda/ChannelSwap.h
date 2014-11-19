@@ -2,11 +2,15 @@
 #include "Middleware.h"
 
 
-class ChannelSwap : Middleware
+class ChannelSwap : public Middleware
 {
   public:
-   static Message process( Message msg );
+    void tick();
+    Message process( Message msg );
+    ChannelSwap(){};
 };
+
+void ChannelSwap::tick(){}
 
 Message ChannelSwap::process( Message msg )
 {

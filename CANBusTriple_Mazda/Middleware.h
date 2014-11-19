@@ -5,15 +5,14 @@
 class Middleware
 {
   public:
-    static void init();
-    static void tick();
-    static Message process( Message* msg );
+    virtual void tick();
+    virtual Message process( Message msg );
+    // boolean enabled;
+    Middleware(){};
+    ~Middleware(){};
 };
 
-Message Middleware::process( Message* msg )
-{
-  
-}
+Message Middleware::process( Message msg ){}
 
 
 #endif

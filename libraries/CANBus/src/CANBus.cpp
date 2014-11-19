@@ -43,13 +43,13 @@ void CANBus::begin()//constructor for initializing can module.
 	// initialize SPI:
 	SPI.begin(); 
 	SPI.setDataMode(SPI_MODE0);
-	SPI.setClockDivider(SPI_CLOCK_DIV4);
+	SPI.setClockDivider(SPI_CLOCK_DIV2);
 	SPI.setBitOrder(MSBFIRST);
 
 	digitalWrite(_reset,LOW); /* RESET CAN CONTROLLER*/
-	delay(100);
+	delay(50);
 	digitalWrite(_reset,HIGH);
-	delay(20);
+	delay(50);
 }
 
 
@@ -110,35 +110,42 @@ case 1000:
     
     
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(WRITE);
 	SPI.transfer(CNF0);
 	SPI.transfer(config0);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(WRITE);
 	SPI.transfer(CNF1);
 	SPI.transfer(config1);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(WRITE);
 	SPI.transfer(CNF2);
 	SPI.transfer(config2);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 }
 
 
-
+void CANBus::bitModify( byte reg, byte value, byte mask  ){
+    digitalWrite(_ss, LOW);
+    SPI.transfer(BIT_MODIFY);
+    SPI.transfer(reg);
+    SPI.transfer(mask);
+    SPI.transfer(value);
+    digitalWrite(_ss, HIGH);
+}
 
 
 int CANBus::getNextTxBuffer(){
@@ -154,11 +161,10 @@ int CANBus::getNextTxBuffer(){
 }
 
 void CANBus::setFilter( int filter0, int filter1 ){
-
+    
     // RXB0
     byte SIDH = filter0 >> 3;
-    byte SIDL = filter0 << 5;
-    
+    byte SIDL = filter0 << 5;    
     this->writeRegister(RXF0SIDH, SIDH, SIDL );
     this->writeRegister(RXF2SIDH, SIDH, SIDL );
     
@@ -172,13 +178,16 @@ void CANBus::setFilter( int filter0, int filter1 ){
     this->writeRegister(RXF5SIDH, SIDH, SIDL );
     
     // Set mask to match everything
+    /*
     int combined = filter0 | filter1;
     SIDH = combined >> 3;
     SIDL = combined << 5;
+    */
+    SIDH = 0xFF >> 3;
+    SIDL = 0xFF << 5;
     this->writeRegister(RXM0SIDH, SIDH, SIDL );
     this->writeRegister(RXM1SIDH, SIDH, SIDL );
-    
-    
+
 }
 
 void CANBus::clearFilters(){
@@ -334,12 +343,12 @@ char CANBus::readID_0()//reads ID in recieve buffer 0
 {
 	char retVal;
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(READ_RX_BUF_0_ID);
 	retVal = SPI.transfer(0xFF);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 	return retVal;
 }
 
@@ -347,12 +356,12 @@ char CANBus::readID_1()//reads ID in reciever buffer 1
 {
 	char retVal;
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(READ_RX_BUF_1_ID);
 	retVal = SPI.transfer(0xFF);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 	return retVal;
 }
 
@@ -360,12 +369,12 @@ char CANBus::readDATA_0()//reads DATA in recieve buffer 0
 {
 	char retVal;
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer( READ_RX_BUF_0_DATA);
 	retVal = SPI.transfer(0xFF);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 	return retVal;
 }
 
@@ -373,12 +382,12 @@ char CANBus::readDATA_1()//reads data in recieve buffer 1
 {
 	char retVal;
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer( READ_RX_BUF_1_DATA);
 	retVal = SPI.transfer(0xFF);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 	return retVal;
 }
 
@@ -454,26 +463,26 @@ byte CANBus::readRegister( int addr )
 void CANBus::writeRegister( int addr, byte value )
 {
     digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(WRITE);
 	SPI.transfer(addr);
 	SPI.transfer(value);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 }
 
 void CANBus::writeRegister( int addr, byte value, byte value2 )
 {
     digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(WRITE);
 	SPI.transfer(addr);
 	SPI.transfer(value);
     SPI.transfer(value2);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 }
 
 
@@ -534,58 +543,58 @@ byte CANBus::readTXBNCTRL(int bufferid)
 void CANBus::load_0(byte identifier, byte data)//loads ID and DATA into transmit buffer 0
 {
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(LOAD_TX_BUF_0_ID);
 	SPI.transfer(identifier);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(LOAD_TX_BUF_0_DATA);
 	SPI.transfer(data);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 }
 
 void CANBus::load_1(byte identifier, byte data)//loads ID and DATA into transmit buffer 1
 {
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(LOAD_TX_BUF_1_ID);
 	SPI.transfer(identifier);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(LOAD_TX_BUF_1_DATA);
 	SPI.transfer(data);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 }
 
 void CANBus::load_2(byte identifier, byte data)//loads ID and DATA into transmit buffer 2
 {
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(LOAD_TX_BUF_2_ID);
 	SPI.transfer(identifier);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 
 	digitalWrite(_ss, LOW);
-	delay(10);
+	delay(1);
 	SPI.transfer(LOAD_TX_BUF_2_DATA);
 	SPI.transfer(data);
-	delay(10);
+	delay(1);
 	digitalWrite(_ss, HIGH);
-	delay(10);
+	delay(1);
 }
 
 void CANBus::load_ff_0(byte length,unsigned short identifier,byte *data)

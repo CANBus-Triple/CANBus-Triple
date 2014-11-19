@@ -3,6 +3,7 @@
 
 Message	KEYWORD1
 CANBus	KEYWORD1
+Middleware	KEYWORD1
 
 
 # Methods and Functions
@@ -10,3 +11,10 @@ CANBus	KEYWORD1
 push	KEYWORD2
 baudConfig	KEYWORD2
 setMode	KEYWORD2
+setClkPre	KEYWORD2
+setRxInt	KEYWORD2
+bitModify	KEYWORD2
+setFilter	KEYWORD2
+clearFilters	KEYWORD2
+init	KEYWORD2
+tick	KEYWORD2

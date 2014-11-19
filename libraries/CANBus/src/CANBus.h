@@ -105,6 +105,17 @@ CNF3=b'00000010'=0x02 = SOF = 0  & WAKFIL = 0 & PS2 = 3
 #define EFLG 0x2D // Error Register address
 
 
+#define WAKIE 0x40
+#define WAKIF 0x40
+#define BFPCTRL 0x0C
+#define B1BFS 0x20
+#define B0BFS 0x10
+#define B1BFE 0x08
+#define B0BFE 0x04
+#define B1BFM 0x02
+#define B0BFM 0x01
+
+
 #define RXB0CTRL 0x60
 #define RXB1CTRL 0x70
 
@@ -173,6 +184,8 @@ public:
     void begin();                       //sets up MCP2515
     void baudConfig(int bitRate);       //sets up baud
 
+    void bitModify( byte reg, byte value, byte mask  );
+    
 	//Method added to enable testing in loopback mode.(pcruce_at_igpp.ucla.edu)
 	void setMode(CANMode mode) ;        //put CAN controller in one of five modes
     

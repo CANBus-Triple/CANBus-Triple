@@ -60,71 +60,71 @@ struct middleware_command {
 };
 
 
-class SerialCommand : Middleware
+class SerialCommand : public Middleware
 {
   public:
-    // static unsigned int logOutputFilter;
-    static CANBus busses[];
-    static Stream* activeSerial;
-    static void init( QueueArray<Message> *q, CANBus b[] );
-    static void tick();
-    static Message process( Message msg );
-    static void printMessageToSerial(Message msg);
-    static void registerCommand(byte commandId, void (*cb)(byte[], int));
-    static void resetToBootloader();
+    SerialCommand( QueueArray<Message> *q );
+    void tick();
+    Message process( Message msg );
+    
+    Stream* activeSerial;
+    void printMessageToSerial(Message msg);
+    void registerCommand(byte commandId, void (*cb)(byte[], int));
+    void resetToBootloader();
   private:
-    static int freeRam();
-    static QueueArray<Message>* mainQueue;
-    static void printChannelDebug();
-    static void printChannelDebug(CANBus);
-    static void processCommand(int command);
-    static int  getCommandBody( byte* cmd, int length );
-    static void clearBuffer();
-    static void getAndSend();
-    static void printSystemDebug();
-    static void settingsCall();
-    static void dumpEeprom();
-    static void getAndSaveEeprom();
-    static void logCommand();
-    static void bluetooth();
-    static void setBluetoothFilter();
-    static char btMessageIdFilters[][2];
-    static boolean passthroughMode;
-    static byte busLogEnabled;
-    static Message newMessage;
-    static byte buffer[];
+    int freeRam();
+    QueueArray<Message>* mainQueue;
+    void printChannelDebug();
+    void printChannelDebug(CANBus);
+    void processCommand(int command);
+    int  getCommandBody( byte* cmd, int length );
+    void clearBuffer();
+    void getAndSend();
+    void printSystemDebug();
+    void settingsCall();
+    void dumpEeprom();
+    void getAndSaveEeprom();
+    void logCommand();
+    void bluetooth();
+    void setBluetoothFilter();
+    char btMessageIdFilters[][2];
+    boolean passthroughMode;
+    byte busLogEnabled;
+    Message newMessage;
+    byte buffer[];
 };
 
 
 
-// Defaults
-QueueArray<Message> *SerialCommand::mainQueue;
-byte SerialCommand::busLogEnabled = 0;               // Start with all busses logging disabled
-boolean SerialCommand::passthroughMode = false;
-Stream* SerialCommand::activeSerial = &Serial;
+
 
 //byte SerialCommand::mwCommandIndex = 0;
 byte mwCommandIndex;
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
+
+
+SerialCommand::SerialCommand( QueueArray<Message> *q )
+{
+  mainQueue = q;
+  
+  
 // TODO Finish this
-char SerialCommand::btMessageIdFilters[][2] = {
+char btMessageIdFilters[][2] = {
                     {0x28F,0x290},
                     {0x0,0x0},
                     {0x28F,0x290},
                     };
 
 
-void SerialCommand::init( QueueArray<Message> *q, CANBus b[] )
-{
-  Serial.begin( 115200 );
-  Serial1.begin( 57600 );
   
-  // TODO use passed in busses!
-  // busses = { b[0], b[1], b[2] };
+// Defaults
+//QueueArray<Message> *SerialCommand::mainQueue;
+byte busLogEnabled = 0;               // Start with all busses logging disabled
+boolean passthroughMode = false;
+Stream* activeSerial = &Serial;
   
-  mainQueue = q;
 }
 
 void SerialCommand::tick()
@@ -243,11 +243,10 @@ void SerialCommand::processCommand(int command)
       for(int i=0; i<mwCommandIndex; i++ ){
         if( mw_cmds[i].command == command ){
           
-          byte cmd[8];
+          byte cmd[64];
           int bytesRead = getCommandBody( cmd, 64 );
-          delay(10);
+          delay(1);
           (*mw_cmds[i].cb)( cmd, bytesRead );
-          
           break;
         }
       }
@@ -301,8 +300,8 @@ void SerialCommand::setBluetoothFilter(){
   int bytesRead = getCommandBody( cmd, 5 );
   
   if( cmd[0] >= 0 && cmd[0] <= 3 ){
-    SerialCommand::btMessageIdFilters[cmd[0]][0] = (cmd[1] << 8)+cmd[2];
-    SerialCommand::btMessageIdFilters[cmd[0]][1] = (cmd[3] << 8)+cmd[4];
+    btMessageIdFilters[cmd[0]][0] = (cmd[1] << 8)+cmd[2];
+    btMessageIdFilters[cmd[0]][1] = (cmd[3] << 8)+cmd[4];
   }
   
 }
@@ -321,9 +320,9 @@ void SerialCommand::logCommand()
   CANBus bus = busses[ cmd[0]-1 ];
   
   if( cmd[1] )
-    SerialCommand::busLogEnabled |= cmd[1] << (cmd[0]-1);
+    busLogEnabled |= cmd[1] << (cmd[0]-1);
     else
-    SerialCommand::busLogEnabled &= cmd[1] << (cmd[0]-1);
+    busLogEnabled &= cmd[1] << (cmd[0]-1);
   
   // Set filter if we got pids in the command
   if( bytesRead > 2 ){

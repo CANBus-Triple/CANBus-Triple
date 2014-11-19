@@ -2,59 +2,62 @@
 #include "Middleware.h"
 
 
-class MazdaLED : Middleware
+class MazdaLED : public Middleware
 {
   
   private:
-    static QueueArray<Message>* mainQueue;
-    static unsigned long updateCounter;
-    static void pushNewMessage();
-    static int fastUpdateDelay;
+    QueueArray<Message>* mainQueue;
+    unsigned long updateCounter;
+    void pushNewMessage();
+    int fastUpdateDelay;
+    unsigned long stockOverrideTimer;
+    unsigned long statusOverrideTimer;
   public:
-    static void init( QueueArray<Message> *q, byte enabled );
-    static void tick();
-    static void showNewPageMessage();
-    static boolean enabled;
-    static void showStatusMessage(char* str, int time);
-    static char lcdString[13];
-    static char lcdStockString[13];
-    static char lcdStatusString[];
-    static byte lcdStatusStringLength;
-    static char lcdStatusStringSlice[];
-    static unsigned long stockOverrideTimer;
-    static unsigned long statusOverrideTimer;
-    static void setOverrideTime( int n );
-    static void setStatusTime( int n );
-    static unsigned int animationCounter;
-    static Message process( Message msg );
-    static char* currentLcdString();
-    static void commandHandler(byte*, int);
+    MazdaLED( QueueArray<Message> *q, byte enabled );
+    Message process( Message );
+    void tick();
+    // void init( QueueArray<Message> *q, byte enabled );
+    
+    void showNewPageMessage();
+    boolean enabled;
+    void showStatusMessage(char* str, int time);
+    char lcdString[13];
+    char lcdStockString[13];
+    char lcdStatusString[];
+    byte lcdStatusStringLength;
+    char lcdStatusStringSlice[];
+    void setOverrideTime( int n );
+    void setStatusTime( int n );
+    unsigned int animationCounter;
+    char* currentLcdString();
+    void commandHandler(byte*, int);
 };
 
-boolean MazdaLED::enabled = cbt_settings.displayEnabled;
-unsigned long MazdaLED::updateCounter = 0;
-int MazdaLED::fastUpdateDelay = 500;
-QueueArray<Message>* MazdaLED::mainQueue;
-char MazdaLED::lcdString[13] = "CANBusTriple";
-char MazdaLED::lcdStockString[13] = "            ";
-char MazdaLED::lcdStatusString[65] = "                                                                ";
-byte MazdaLED::lcdStatusStringLength = 12;
-char MazdaLED::lcdStatusStringSlice[13] = "            ";
-unsigned int MazdaLED::animationCounter = 0;
-unsigned long MazdaLED::stockOverrideTimer = 4000;
-unsigned long MazdaLED::statusOverrideTimer = 0;
-
-byte egtSettings[2][3];
 
 
 
-void MazdaLED::init( QueueArray<Message> *q, byte enabled )
+
+MazdaLED::MazdaLED( QueueArray<Message> *q, byte enabl )
 {
   mainQueue = q;
-  MazdaLED::enabled = (enabled == 1);
+  enabled = (enabl == 1);
   
   // Register a serial command callback handler
-  SerialCommand::registerCommand(0x16, MazdaLED::commandHandler);
+  // SerialCommand::registerCommand(0x16, commandHandler);
+  
+  // Instance Properties 
+  updateCounter = 0;
+  fastUpdateDelay = 500;
+  animationCounter = 0;
+  stockOverrideTimer = 0;
+  statusOverrideTimer = 0;
+  
+  strcpy(lcdString, "CANBusTriple");
+  strcpy(lcdStockString, "            ");
+  strcpy(lcdStatusString, "                                                                ");  
+  lcdStatusStringLength = 12;
+  strcpy(lcdStatusStringSlice, lcdStockString);
+  
 }
 
 
@@ -81,7 +84,7 @@ void MazdaLED::commandHandler(byte* bytes, int length)
 
 void MazdaLED::tick()
 {
-   
+  
   if(!enabled) return;
   
   // New LED update CAN message for fast updates

@@ -4,37 +4,35 @@
 #define NUM_PID_TO_PROCESS 2
 #define BLUETOOTH_SENSORS
 
-class ServiceCall : Middleware
+class ServiceCall : public Middleware
 {
   
   private:
-    static QueueArray<Message>* mainQueue;
-    static void saveSettings();
-    static byte* index;
+    QueueArray<Message>* mainQueue;
+    void saveSettings();
+    byte* index;
   public:
-    static void init( QueueArray<Message> *q );
-    static void tick();
-    static Message process(Message msg);
-    static unsigned long lastServiceCallSent;
-    static void sendNextServiceCall( struct pid pid[] );
-    static void setServiceIndex(byte i);
-    static byte getServiceIndex();
-    static byte incServiceIndex();
-    static byte decServiceIndex();
-    static void setFilterPids();
-    static int  filterPids[ NUM_PID_TO_PROCESS ];
-    static void updateBTSensors( pid *pid );
+    void tick();
+    Message process(Message msg);
+    ServiceCall( QueueArray<Message> *q );
+    unsigned long lastServiceCallSent;
+    void sendNextServiceCall( struct pid pid[] );
+    void setServiceIndex(byte i);
+    byte getServiceIndex();
+    byte incServiceIndex();
+    byte decServiceIndex();
+    void setFilterPids();
+    int  filterPids[ NUM_PID_TO_PROCESS ];
+    void updateBTSensors( pid *pid );
 };
 
 
-QueueArray<Message>* ServiceCall::mainQueue;
-unsigned long ServiceCall::lastServiceCallSent = millis();
-byte * ServiceCall::index = &cbt_settings.displayIndex;
-int ServiceCall::filterPids[NUM_PID_TO_PROCESS];
-
-
-void ServiceCall::init( QueueArray<Message> *q )
+ServiceCall::ServiceCall( QueueArray<Message> *q )
 {
+  
+  lastServiceCallSent = millis();
+  index = &cbt_settings.displayIndex;
+  
   mainQueue = q;
   setFilterPids();
 }
@@ -43,9 +41,9 @@ void ServiceCall::init( QueueArray<Message> *q )
 void ServiceCall::tick()
 {
   // Send service calls every ~100ms
-  if( millis() > ServiceCall::lastServiceCallSent + 30 ){
-    ServiceCall::lastServiceCallSent = millis();
-    ServiceCall::sendNextServiceCall( cbt_settings.pids );
+  if( millis() > lastServiceCallSent + 30 ){
+    lastServiceCallSent = millis();
+    sendNextServiceCall( cbt_settings.pids );
   }
   
 }
@@ -154,7 +152,7 @@ void ServiceCall::setServiceIndex(byte i)
 {
   *index = i;
   saveSettings();
-  ServiceCall::setFilterPids();
+  setFilterPids();
 }
 
 byte ServiceCall::incServiceIndex()
@@ -165,8 +163,8 @@ byte ServiceCall::incServiceIndex()
   else
    *index = *index + 1;
   
-  ServiceCall::saveSettings();
-  ServiceCall::setFilterPids();
+  saveSettings();
+  setFilterPids();
   
   return *index;
 }
@@ -179,8 +177,8 @@ byte ServiceCall::decServiceIndex()
   else
    *index = *index-1;
   
-  ServiceCall::saveSettings();
-  ServiceCall::setFilterPids();
+  saveSettings();
+  setFilterPids();
   
   return *index;
 }
