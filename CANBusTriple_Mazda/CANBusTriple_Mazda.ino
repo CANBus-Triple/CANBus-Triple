@@ -39,6 +39,7 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 
 #include "Settings.h"
 #include "WheelButton.h"
+#include "MazdaWheelButton.h"
 #include "ChannelSwap.h"
 #include "SerialCommand.h"
 #include "ServiceCall.h"
@@ -49,7 +50,6 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 
 
 byte rx_status;
-byte wheelButton = 0;
 
 QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
@@ -62,14 +62,15 @@ QueueArray<Message> writeQueue;
 */
 
 ServiceCall *serviceCall = new ServiceCall( &writeQueue );
-MazdaLED *mazdaLed = new MazdaLED( &writeQueue, false );
+MazdaLED *mazdaLed = new MazdaLED( &writeQueue );
 
 Middleware *activeMiddleware[] = {
   new SerialCommand( &writeQueue ),
-  new ChannelSwap(),
-  mazdaLed,
-  serviceCall,
-  // new Naptime(0x0472)
+  // new ChannelSwap(),
+  // mazdaLed,
+  // serviceCall,
+  // new Naptime(0x0472),
+  // new MazdaWheelButton(mazdaLed, serviceCall)
 };
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );
 
@@ -135,7 +136,7 @@ void setup(){
   // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
   
   CANBus2.begin();
-  CANBus2.baudConfig(500);
+  CANBus2.baudConfig(125);
   CANBus2.setRxInt(true);
   CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
@@ -216,8 +217,6 @@ void loop() {
 
 
 
-  readWheelButton();
-
   
   // Pet the dog
   // wdt_reset();
@@ -225,14 +224,6 @@ void loop() {
 } // End loop()
 
 
-
-void toggleMazdaLed()
-{
-  cbt_settings.displayEnabled = mazdaLed->enabled = !mazdaLed->enabled;
-  EEPROM.write( offsetof(struct cbt_settings, displayEnabled), cbt_settings.displayEnabled);
-  if(mazdaLed->enabled)
-    mazdaLed->showStatusMessage("MazdaLED ON ", 2000);
-}
 
 
 boolean sendMessage( Message msg, CANBus bus ){
@@ -313,68 +304,6 @@ void processMessage( Message msg ){
   
 }
 
-
-
-void readWheelButton(){
-
-  byte button = WheelButton::getButtonDown();
-  
-  if( wheelButton != button ){
-    wheelButton = button;
-    
-     switch(wheelButton){
-       /*
-       case B10000000:
-         MazdaLED::showStatusMessage("    LEFT    ", 2000);
-       break;
-       case B01000000:
-         MazdaLED::showStatusMessage("    RIGHT   ", 2000);
-       break;
-       case B00100000:
-         MazdaLED::showStatusMessage("     UP     ", 2000);
-       break;
-       case B00010000:
-         MazdaLED::showStatusMessage("    DOWN    ", 2000);
-       break;
-       case B00001000:
-         MazdaLED::showStatusMessage("    WHAT    ", 2000);
-       break;
-       case B00000100:
-         MazdaLED::showStatusMessage("    WHAT    ", 2000);
-       break;
-       case B00000010:
-         MazdaLED::showStatusMessage("    WHAT    ", 2000);
-       break;
-       case B00000001:
-         MazdaLED::showStatusMessage("    WHAT    ", 2000);
-       break;
-       */
-       
-       case B10000001:
-         // Decrement service pid
-         serviceCall->decServiceIndex();
-         mazdaLed->showNewPageMessage();
-         CANBus2.setMode(CONFIGURATION);
-         CANBus2.setFilter( serviceCall->filterPids[0], serviceCall->filterPids[1] );
-         CANBus2.setMode(NORMAL);
-       break;
-       case B01000001:
-         // Increment service pid 
-         serviceCall->incServiceIndex();
-         mazdaLed->showNewPageMessage();
-         CANBus2.setMode(CONFIGURATION);
-         CANBus2.setFilter( serviceCall->filterPids[0], serviceCall->filterPids[1] );
-         CANBus2.setMode(NORMAL);
-       break;
-       case B01000010:
-         toggleMazdaLed();
-       break;
-       
-     }
- 
-  }
-  
-}
 
 
 

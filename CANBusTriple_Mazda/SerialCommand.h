@@ -95,11 +95,7 @@ class SerialCommand : public Middleware
 };
 
 
-
-
-
-//byte SerialCommand::mwCommandIndex = 0;
-byte mwCommandIndex;
+byte mwCommandIndex = 0;
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
@@ -109,33 +105,35 @@ SerialCommand::SerialCommand( QueueArray<Message> *q )
 {
   mainQueue = q;
   
+  // Serial.begin(115200);
+  // Serial1.begin(57600);
   
-// TODO Finish this
-char btMessageIdFilters[][2] = {
-                    {0x28F,0x290},
-                    {0x0,0x0},
-                    {0x28F,0x290},
-                    };
-
-
+//  // TODO Finish this
+//  btMessageIdFilters[][2] = {
+//                            {0x28F,0x290},
+//                            {0x0,0x0},
+//                            {0x28F,0x290},
+//                            };
+//  
   
-// Defaults
-//QueueArray<Message> *SerialCommand::mainQueue;
-byte busLogEnabled = 0;               // Start with all busses logging disabled
-boolean passthroughMode = false;
-Stream* activeSerial = &Serial;
+  // Default Instance Properties
+  busLogEnabled = 0;               // Start with all busses logging disabled
+  passthroughMode = false;
+  activeSerial = &Serial;
   
 }
 
 void SerialCommand::tick()
 {
+  // Serial.println(passthroughMode, BIN);
   
   // Pass-through mode for bluetooth DFU mode
-  if( passthroughMode ){
+  if( passthroughMode == true ){
     while(Serial.available()) Serial1.write(Serial.read());
     while(Serial1.available()) Serial.write(Serial1.read());
     return;
   }
+  
   
   if( Serial1.available() > 0 ){
     activeSerial = &Serial1;
@@ -162,7 +160,7 @@ void SerialCommand::printMessageToSerial( Message msg )
   // Bus Filter
   byte flag;
   flag = 0x1 << (msg.busId-1);
-  if( !(SerialCommand::busLogEnabled & flag) ){
+  if( !(busLogEnabled & flag) ){
     return;
   }
   
@@ -219,7 +217,7 @@ void SerialCommand::printMessageToSerial( Message msg )
 void SerialCommand::processCommand(int command)
 {
   
-  delay(20);
+  delay(5); // Delay to wait for the entire command from Serial
   
   switch( command ){
     case 0x01:
@@ -256,7 +254,7 @@ void SerialCommand::processCommand(int command)
   
   
   
-  SerialCommand::clearBuffer();
+  clearBuffer();
 }
 
 

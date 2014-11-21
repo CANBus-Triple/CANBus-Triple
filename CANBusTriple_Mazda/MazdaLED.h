@@ -13,7 +13,7 @@ class MazdaLED : public Middleware
     unsigned long stockOverrideTimer;
     unsigned long statusOverrideTimer;
   public:
-    MazdaLED( QueueArray<Message> *q, byte enabled );
+    MazdaLED( QueueArray<Message> *q );
     Message process( Message );
     void tick();
     // void init( QueueArray<Message> *q, byte enabled );
@@ -37,10 +37,10 @@ class MazdaLED : public Middleware
 
 
 
-MazdaLED::MazdaLED( QueueArray<Message> *q, byte enabl )
+MazdaLED::MazdaLED( QueueArray<Message> *q )
 {
   mainQueue = q;
-  enabled = (enabl == 1);
+  enabled = true;
   
   // Register a serial command callback handler
   // SerialCommand::registerCommand(0x16, commandHandler);
