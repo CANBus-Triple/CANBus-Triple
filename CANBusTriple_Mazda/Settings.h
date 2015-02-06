@@ -7,7 +7,6 @@ struct pid {
   byte busId;
   byte settings; // unused, unused, unused, unused, unused, unused, unused, add decimal flag
   unsigned int value;
-  // float value; // 4 byte float
   byte txd[8];
   byte rxf[6];
   byte rxd[2];
@@ -15,12 +14,17 @@ struct pid {
   char name[8];
 };
 
+struct busConfig {
+  int baud;
+};
+
 struct cbt_settings {
   byte displayEnabled;
   byte firstboot;
   byte displayIndex;
-  byte placeholder3;
+  struct busConfig busCfg[3];
   byte placeholder4;
+  byte hwselftest;
   byte placeholder5;
   byte placeholder6;
   byte placeholder7;
@@ -70,7 +74,12 @@ void Settings::firstbootSetup()
     1, // displayEnabled
     1, // firstboot
     0, // displayIndex
-    0, // placeholder3
+    {
+      { 125 },
+      { 500 },
+      { 125 }
+    },
+    0, // hwselftest
     0, // placeholder4
     0, // placeholder5
     0, // placeholder6

@@ -1,5 +1,6 @@
 
 #include "Middleware.h"
+#include "SerialCommand.h"
 
 
 class MazdaLED : public Middleware
@@ -13,7 +14,7 @@ class MazdaLED : public Middleware
     unsigned long stockOverrideTimer;
     unsigned long statusOverrideTimer;
   public:
-    MazdaLED( QueueArray<Message> *q );
+    MazdaLED( QueueArray<Message> *q, SerialCommand *serialCommand );
     Message process( Message );
     void tick();
     // void init( QueueArray<Message> *q, byte enabled );
@@ -23,7 +24,7 @@ class MazdaLED : public Middleware
     void showStatusMessage(char* str, int time);
     char lcdString[13];
     char lcdStockString[13];
-    char lcdStatusString[];
+    char lcdStatusString[64];
     byte lcdStatusStringLength;
     char lcdStatusStringSlice[];
     void setOverrideTime( int n );
@@ -37,13 +38,13 @@ class MazdaLED : public Middleware
 
 
 
-MazdaLED::MazdaLED( QueueArray<Message> *q )
+MazdaLED::MazdaLED( QueueArray<Message> *q, SerialCommand *serialCommand )
 {
   mainQueue = q;
   enabled = true;
   
   // Register a serial command callback handler
-  // SerialCommand::registerCommand(0x16, commandHandler);
+  serialCommand->registerCommand(0x16, this);
   
   // Instance Properties 
   updateCounter = 0;
@@ -63,7 +64,7 @@ MazdaLED::MazdaLED( QueueArray<Message> *q )
 
 void MazdaLED::commandHandler(byte* bytes, int length)
 {
-  
+
   char chars[65];
   for(unsigned int i = 0; i < length; i++){
     chars[i] = (char)bytes[i];
@@ -71,20 +72,17 @@ void MazdaLED::commandHandler(byte* bytes, int length)
   
   if( length > 12 ){
     lcdStatusStringLength = animationCounter = length;
-    MazdaLED::showStatusMessage(chars, 4000+(length*200));
+    showStatusMessage(chars, 4000+(length*200));
   }else{
     animationCounter = 0;
-    MazdaLED::showStatusMessage(chars, 7000);
+    showStatusMessage(chars, 7000);
   }
-  
-  
-  
+
 }
 
 
 void MazdaLED::tick()
 {
-  
   if(!enabled) return;
   
   // New LED update CAN message for fast updates
@@ -98,8 +96,8 @@ void MazdaLED::tick()
 
 
 void MazdaLED::showStatusMessage(char* str, int time){
-  sprintf( MazdaLED::lcdStatusString , str);
-  MazdaLED::setStatusTime(time);
+  sprintf( lcdStatusString , str);
+  setStatusTime(time);
 }
 
 
@@ -161,6 +159,11 @@ char* MazdaLED::currentLcdString(){
   if( stockOverrideTimer > millis() )
     return lcdStockString;
   else if( statusOverrideTimer > millis() ){
+    
+    return lcdStatusString;
+    
+    // TODO: Make animation work.
+    
     // Return a slice of the lcdStatusString (Animation)
     sprintf( lcdStatusStringSlice, "            " );
     
@@ -168,9 +171,9 @@ char* MazdaLED::currentLcdString(){
       // if( (lcdStatusStringLength - animationCounter)+i < lcdStatusStringLength )
         // lcdStatusStringSlice[i] = lcdStatusString[(lcdStatusStringLength - animationCounter)+i];
       if( animationCounter > 0 )
-        memcpy ( &lcdStatusStringSlice+(animationCounter-12), &lcdStatusString, 12 );
+        memcpy ( lcdStatusStringSlice+(animationCounter-12), lcdStatusString, 12 );
       else
-        memcpy ( &lcdStatusStringSlice, &lcdStatusString, 12 );
+        memcpy ( lcdStatusStringSlice, lcdStatusString, 12 );
     
     if(animationCounter > 0) animationCounter--;
     
@@ -186,7 +189,7 @@ void MazdaLED::setOverrideTime( int n ){
 
 void MazdaLED::setStatusTime( int n ){
   statusOverrideTimer = millis() + n;
-  // animationCounter = 0;
+  animationCounter = 0;
 }
 
 
@@ -322,7 +325,7 @@ void MazdaLED::showNewPageMessage()
                                               cbt_settings.pids[cbt_settings.displayIndex+1].name[1],
                                               cbt_settings.pids[cbt_settings.displayIndex+1].name[2],
                                               cbt_settings.pids[cbt_settings.displayIndex+1].name[3]);
-  MazdaLED::showStatusMessage(msgBuffer, 2000);
+  showStatusMessage(msgBuffer, 2000);
 }
 
 

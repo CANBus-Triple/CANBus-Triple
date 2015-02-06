@@ -1,7 +1,9 @@
-/***
-***  Basic read / send firmware sketch
-***  https://github.com/etx/CANBus-Triple
-***/
+/*
+*  CANBus Triple
+*  The Car Hacking Platform
+*  http://canb.us
+*  https://github.com/etx/CANBus-Triple
+*/
 
 #include <avr/wdt.h>
 #include <SPI.h>
@@ -10,10 +12,12 @@
 #include <Message.h>
 #include <QueueArray.h>
 
+#define BUILD 0.4.0
+
+#define RUN_SELF_TEST 1
 
 // CANBus Triple Rev F
 #define BOOT_LED 13
-
 #define BT_SLEEP 8
 
 #define CAN1INT 0
@@ -46,11 +50,10 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 #include "MazdaLED.h"
 #include "Naptime.h"
 
-
+#include "SelfTest.h"
 
 
 byte rx_status;
-
 QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
 
@@ -59,33 +62,33 @@ QueueArray<Message> writeQueue;
 
 /*
 *  Middleware Setup
+*  http://docs.canb.us/firmware/main.html
 */
-
+SerialCommand *serialCommand = new SerialCommand( &writeQueue );
 ServiceCall *serviceCall = new ServiceCall( &writeQueue );
-MazdaLED *mazdaLed = new MazdaLED( &writeQueue );
+MazdaLED *mazdaLed = new MazdaLED( &writeQueue, serialCommand );
 
 Middleware *activeMiddleware[] = {
-  new SerialCommand( &writeQueue ),
+  serialCommand,
   // new ChannelSwap(),
   // mazdaLed,
   // serviceCall,
-  // new Naptime(0x0472),
+  // new Naptime(0x0472, serialCommand),
   // new MazdaWheelButton(mazdaLed, serviceCall)
 };
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );
 
 
-
-
 void setup(){
   
   Settings::init();
-  delay(1);
+  delay(1);  
   
   /*
   *  Middleware Settings
   */
   mazdaLed->enabled = cbt_settings.displayEnabled;
+  serviceCall->setFilterPids();
   
   
   Serial.begin( 115200 ); // USB
@@ -123,10 +126,12 @@ void setup(){
   digitalWrite(CAN1RESET, LOW);
   digitalWrite(CAN2RESET, LOW);
   digitalWrite(CAN3RESET, LOW);
-   
+  
+  
   // Setup CAN Busses 
   CANBus1.begin();
   CANBus1.setClkPre(1);
+  // CANBus1.baudConfig(cbt_settings.busCfg[0].baud);
   CANBus1.baudConfig(125);
   CANBus1.setRxInt(true);
   CANBus1.bitModify(RXB0CTRL, 0x04, 0x04); // Set buffer rollover enabled
@@ -136,6 +141,7 @@ void setup(){
   // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
   
   CANBus2.begin();
+  // CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
   CANBus2.baudConfig(125);
   CANBus2.setRxInt(true);
   CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
@@ -144,12 +150,23 @@ void setup(){
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
   
   CANBus3.begin();
+  // CANBus3.baudConfig(cbt_settings.busCfg[2].baud);
   CANBus3.baudConfig(125);
   CANBus3.setRxInt(true);
   CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus3.clearFilters();
   CANBus3.setMode(NORMAL);
   // attachInterrupt(CAN3INT, handleInterrupt3, LOW);
+  
+  
+  
+  /*
+  *  Hardware Self Test
+  */
+  #ifdef RUN_SELF_TEST
+    if( cbt_settings.hwselftest == 0 )
+      SelfTest::run();
+  #endif
   
   
   
@@ -166,12 +183,16 @@ void setup(){
     delay(50);
   }
   
+  
+  
+  
   // wdt_enable(WDTO_1S);
   
 }
 
 /*
 *  Interrupt Handlers
+*  Currently unused - loop() method will poll for logic low before a read
 */
 void handleInterrupt1(){
 }
@@ -181,7 +202,9 @@ void handleInterrupt3(){
 }
 
 
-
+/*
+*  TODO, Comment on this method
+*/
 void loop() {
   
   // Run all middleware ticks
@@ -225,7 +248,9 @@ void loop() {
 
 
 
-
+/*
+*  TODO, Comment on this method
+*/
 boolean sendMessage( Message msg, CANBus bus ){
   
   if( msg.dispatch == false ) return true;
@@ -261,8 +286,9 @@ boolean sendMessage( Message msg, CANBus bus ){
 
 
 
-
-
+/*
+*  TODO, Comment on this method
+*/
 void readBus( CANBus bus ){
   
   // Abort if readQueue is full
@@ -294,13 +320,31 @@ void readBus( CANBus bus ){
 }
 
 
+/*
+*  TODO, Comment on this method
+*/
 void processMessage( Message msg ){
   
   for(int i=0; i<=activeMiddlewareLength-1; i++)
     msg = activeMiddleware[i]->process( msg );
   
+  // For self test slave
+  // msg.frame_id += 0x08;
+  // msg.dispatch = true;
+  
   if( msg.dispatch == true )
     writeQueue.push( msg );
+  
+}
+
+
+/*
+*  Cycle through available baud rates and listen for successful packets
+*  Save successful baud rate to cbt_settings structure
+*/
+void baudDetect(byte busId){
+  
+  
   
 }
 

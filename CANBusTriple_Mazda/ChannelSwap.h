@@ -8,9 +8,12 @@ class ChannelSwap : public Middleware
     void tick();
     Message process( Message msg );
     ChannelSwap(){};
+    void commandHandler(byte* bytes, int length);
 };
 
 void ChannelSwap::tick(){}
+
+void ChannelSwap::commandHandler(byte* bytes, int length){}
 
 Message ChannelSwap::process( Message msg )
 {

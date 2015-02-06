@@ -15,6 +15,7 @@ class ServiceCall : public Middleware
     void tick();
     Message process(Message msg);
     ServiceCall( QueueArray<Message> *q );
+    void commandHandler(byte* bytes, int length);
     unsigned long lastServiceCallSent;
     void sendNextServiceCall( struct pid pid[] );
     void setServiceIndex(byte i);
@@ -51,7 +52,6 @@ void ServiceCall::tick()
 
 Message ServiceCall::process(Message msg){
   
-  
   // Process service call responses 
   for( int i=*index; i<*index+NUM_PID_TO_PROCESS; i++ ){
     
@@ -74,11 +74,11 @@ Message ServiceCall::process(Message msg){
       }
       
       if(match){
-        /*
-        Serial.print("Got response packet for PID ");
-        Serial.println( pid->name );
-        SerialCommand::printMessageToSerial( msg );
-        */
+        
+        // Serial.print("Got response packet for PID ");
+        // Serial.println( pid->name );
+        // printMessageToSerial( msg );
+        
         
         // Remove two bytes of length to compensate for the fact PID is not in this array. For ScanGauge compat
         byte start = (pid->rxd[0]/8) - 2;
@@ -122,7 +122,6 @@ Message ServiceCall::process(Message msg){
           out[4] = base & 0xFF;
           out[5] = 0x0D;
           out[6] = 0x0A;
-          delay(1);
           Serial1.print(out);
           #endif
           
@@ -140,7 +139,7 @@ Message ServiceCall::process(Message msg){
   return msg;
 }
 
-
+void ServiceCall::commandHandler(byte* bytes, int length){}
 
 
 byte ServiceCall::getServiceIndex()
@@ -190,7 +189,6 @@ void ServiceCall::setFilterPids()
   for( int i=*index; i<*index+NUM_PID_TO_PROCESS; i++ ){
     // Add 8 to TXD message ID, this is the ID that the response will use
     filterPids[ii] = int((cbt_settings.pids[i].txd[0] << 8) + cbt_settings.pids[i].txd[1]) + 0x08;
-    Serial.println(filterPids[ii]);
     ii++;
   }
   
@@ -204,7 +202,6 @@ void ServiceCall::saveSettings()
 
 
 void ServiceCall::sendNextServiceCall( struct pid pid[] ){
-  
   
   /* TODO
    * Make this look down to 0 when the index is 7, right now it just increments up one which could try to access a non-existant index of 9.
@@ -231,7 +228,6 @@ void ServiceCall::sendNextServiceCall( struct pid pid[] ){
     msg.length = 8;
     msg.dispatch = true;
     mainQueue->push(msg);
-    
     
   }
   

@@ -46,6 +46,10 @@ TODO: Implenent this ^^^
 
 // #define JSON_OUT
 
+#ifndef SerialCommand_H
+#define SerialCommand_H
+
+
 #define COMMAND_OK 0xFF
 #define COMMAND_ERROR 0x80
 #define NEWLINE "\r"
@@ -56,7 +60,8 @@ TODO: Implenent this ^^^
 
 struct middleware_command {
   byte command;
-  void (*cb)(byte[], int);
+  // void (Middleware::*cb)(byte[], int);
+  Middleware *cbInstance;
 };
 
 
@@ -66,10 +71,11 @@ class SerialCommand : public Middleware
     SerialCommand( QueueArray<Message> *q );
     void tick();
     Message process( Message msg );
+    void commandHandler(byte* bytes, int length);
     
     Stream* activeSerial;
     void printMessageToSerial(Message msg);
-    void registerCommand(byte commandId, void (*cb)(byte[], int));
+    void registerCommand(byte commandId, Middleware *cbInstance);
     void resetToBootloader();
   private:
     int freeRam();
@@ -152,6 +158,8 @@ Message SerialCommand::process( Message msg )
   printMessageToSerial(msg);
   return msg;
 }
+
+void SerialCommand::commandHandler(byte* bytes, int length){}
 
 
 void SerialCommand::printMessageToSerial( Message msg )
@@ -244,7 +252,8 @@ void SerialCommand::processCommand(int command)
           byte cmd[64];
           int bytesRead = getCommandBody( cmd, 64 );
           delay(1);
-          (*mw_cmds[i].cb)( cmd, bytesRead );
+          // (*mw_cmds[i].cb)( cmd, bytesRead );
+          mw_cmds[i].cbInstance->commandHandler(cmd, bytesRead);
           break;
         }
       }
@@ -449,7 +458,7 @@ void SerialCommand::clearBuffer()
 
 void SerialCommand::printSystemDebug()
 {
-  activeSerial->print(F("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.2.5\", \"memory\":\""));
+  activeSerial->print(F("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.4.0\", \"memory\":\""));
   activeSerial->print(freeRam());
   activeSerial->println(F("\"}"));  
 }
@@ -482,13 +491,13 @@ void SerialCommand::printChannelDebug(CANBus channel){
 }
 
 
-void SerialCommand::registerCommand(byte commandId, void (*cb)(byte[], int))
+void SerialCommand::registerCommand(byte commandId, Middleware *cbInstance)
 {
   // About if we've reached the max number of registered callbacks
   if( mwCommandIndex >= MAX_MW_CALLBACKS ) return;
   
   mw_cmds[mwCommandIndex].command = commandId;
-  mw_cmds[mwCommandIndex].cb = cb;
+  mw_cmds[mwCommandIndex].cbInstance = cbInstance;
   mwCommandIndex++;
   
 }
@@ -523,5 +532,5 @@ int SerialCommand::freeRam (){
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
-
+#endif
 
