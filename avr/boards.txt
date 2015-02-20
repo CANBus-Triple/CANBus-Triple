@@ -1,0 +1,31 @@
+canbustriple.name=CANBus Triple
+canbustriple.vid.0=0x2341
+canbustriple.pid.0=0x0036
+canbustriple.vid.1=0x2341
+canbustriple.pid.1=0x8036
+canbustriple.upload.tool=avrdude
+canbustriple.upload.protocol=avr109
+canbustriple.upload.maximum_size=28672
+canbustriple.upload.maximum_data_size=2560
+canbustriple.upload.speed=57600
+canbustriple.upload.disable_flushing=true
+canbustriple.upload.use_1200bps_touch=true
+canbustriple.upload.wait_for_upload_port=true
+
+canbustriple.bootloader.tool=avrdude
+canbustriple.bootloader.low_fuses=0xff
+canbustriple.bootloader.high_fuses=0xd8
+canbustriple.bootloader.extended_fuses=0xc8
+canbustriple.bootloader.file=caterina/Caterina.hex
+canbustriple.bootloader.unlock_bits=0x3F
+canbustriple.bootloader.lock_bits=0x2F
+
+canbustriple.build.mcu=atmega32u4
+canbustriple.build.f_cpu=16000000L
+canbustriple.build.vid=0x2341
+canbustriple.build.pid=0x8036
+canbustriple.build.usb_product="CANBus Triple"
+canbustriple.build.board=AVR_LEONARDO
+canbustriple.build.core=arduino
+canbustriple.build.variant=canbustriple
+canbustriple.build.extra_flags={build.usb_flags}
