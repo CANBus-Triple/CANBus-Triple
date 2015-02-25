@@ -64,8 +64,8 @@ Connect to your CBT Serial port and you're ready to send commands.
 
 * Send **0x0101** to get general device information.
 * Send **0x011001** to get CAN Bus 1 information.
-* Send **0x011001** to get CAN Bus 2 information.
-* Send **0x011001** to get CAN Bus 3 information.
+* Send **0x011002** to get CAN Bus 2 information.
+* Send **0x011003** to get CAN Bus 3 information.
 
 ![CoolTerm](http://res.cloudinary.com/ddbgan4vk/image/upload/w_700/v1424832745/CoolTermCBT_zdm4xz.png)
 
