@@ -1,8 +1,8 @@
 /*
 *  CANBus Triple
 *  The Car Hacking Platform
-*  http://canb.us
-*  https://github.com/etx/CANBus-Triple
+*  https://canb.us
+*  https://github.com/CANBus-Triple
 */
 
 #include <avr/wdt.h>
@@ -13,6 +13,7 @@
 #include <QueueArray.h>
 
 #define BUILD 0.4.0
+// #define SLEEP_ENABLE
 
 
 CANBus CANBus1(CAN1SELECT, CAN1RESET, 1, "Bus 1");
@@ -45,7 +46,9 @@ Middleware *activeMiddleware[] = {
   serialCommand,
   new ChannelSwap(),
   serviceCall,
+  #ifdef SLEEP_ENABLE
   new Naptime(0x0472, serialCommand),
+  #endif
 };
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );
 
