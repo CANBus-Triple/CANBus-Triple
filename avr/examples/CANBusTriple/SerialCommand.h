@@ -458,7 +458,7 @@ void SerialCommand::clearBuffer()
 
 void SerialCommand::printSystemDebug()
 {
-  activeSerial->print(F("{\"event\":\"version\", \"name\":\"CANBus Triple Mazda\", \"version\":\"0.4.0\", \"memory\":\""));
+  activeSerial->print("{\"event\":\"version\", \"name\":\""+String(BUILDNAME)+"\", \"version\":\""+String(BUILD)+"\", \"memory\":\"");
   activeSerial->print(freeRam());
   activeSerial->println(F("\"}"));
 }

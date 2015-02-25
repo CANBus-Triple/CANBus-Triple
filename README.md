@@ -44,6 +44,8 @@ Press the Build and Upload button:
 
 The IDE will compile and upload to the CANBus Triple.
 
+![IDE Upload](http://res.cloudinary.com/ddbgan4vk/image/upload/w_420/v1424831475/ArduinoIDEUpload_kbajva.png)
+
 
 
 ### Easy Mode
@@ -56,7 +58,9 @@ Example AVRDude command:
 
 ## Talking over USB Serial
 
-I use [CoolTerm](http://freeware.the-meiers.org/). It is free software available for Linux, MacOS, and Windows.
+I use [CoolTerm](http://freeware.the-meiers.org/). It is free software available for Linux, MacOS, and Windows. Use the terminal software of your choice.
+
+![CoolTerm](http://res.cloudinary.com/ddbgan4vk/image/upload/v1424831735/CoolTermCBT.png)
 
 
 See [the docs](http://docs.canb.us/firmware/api.html) for available commands.

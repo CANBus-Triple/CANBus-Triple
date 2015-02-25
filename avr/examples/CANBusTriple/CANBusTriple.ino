@@ -12,7 +12,8 @@
 #include <Message.h>
 #include <QueueArray.h>
 
-#define BUILD 0.4.0
+#define BUILDNAME "CANBus Triple"
+#define BUILD "0.4.0"
 // #define SLEEP_ENABLE
 
 
