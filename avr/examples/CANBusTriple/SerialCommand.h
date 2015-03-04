@@ -524,7 +524,10 @@ void SerialCommand::dumpEeprom()
 {
   // dump eeprom
   for(int i=0; i<512; i++){
-    activeSerial->print( EEPROM.read(i), HEX );
+	uint8_t v = EEPROM.read(i);
+	if (v < 0x10)
+	  activeSerial->print( "0" );
+    activeSerial->print( v, HEX );
     if(i<511) activeSerial->print( ":" );
   }
 
