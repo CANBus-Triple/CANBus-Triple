@@ -19,7 +19,7 @@ This code is tested with Arduino 1.6.0. [Download](http://arduino.cc/en/Main/Sof
 ### Get the code
 Clone this repo / download to your Arduino [Sketchbook](http://arduino.cc/en/guide/Environment#sketchbook)/hardware folder. The path should look like this
 
-	Documents/Ardunio/hardware/CANBus-Triple
+	Documents/Arduino/hardware/CANBus-Triple
 
 To clone:
 
