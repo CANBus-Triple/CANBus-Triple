@@ -458,11 +458,11 @@ void SerialCommand::clearBuffer()
 
 void SerialCommand::printSystemDebug()
 {
-  activeSerial->print(F("{\"event\":\"version\", \"name\":\""+String(BUILDNAME)+
+  activeSerial->print("{\"event\":\"version\", \"name\":\""+String(BUILDNAME)+
 #ifdef BUILD_VERSION
    "\", \"version\":\""+String(BUILD_VERSION)+
 #endif
-   "\", \"memory\":\""));
+   "\", \"memory\":\"");
   activeSerial->print(freeRam());
   activeSerial->println(F("\"}"));
 }
