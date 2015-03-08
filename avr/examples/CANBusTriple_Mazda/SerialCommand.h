@@ -98,6 +98,7 @@ class SerialCommand : public Middleware
     byte busLogEnabled;
     Message newMessage;
     byte buffer[];
+    void printEFLG(CANBus);
 };
 
 
@@ -474,6 +475,30 @@ void SerialCommand::printChannelDebug(){
 
 }
 
+void SerialCommand::printEFLG(CANBus channel) {
+  if (channel.readRegister(EFLG) & 0b00000001)      //EWARN
+    activeSerial->print( F("\"\n\"Receive Error Warning - TEC or REC >= 96\"") );
+  if (channel.readRegister(EFLG) & 0b00000010)      //RXWAR
+    activeSerial->print( F(", \n\"Receive Error Warning - REC >= 96\"") );
+  if (channel.readRegister(EFLG) & 0b00000100)      //TXWAR
+    activeSerial->print( F(", \n\"Transmit Error Warning - TEX >= 96\"") );
+  if (channel.readRegister(EFLG) & 0b00001000)      //RXEP
+    activeSerial->print( F(", \n\"Receive Error Warning - REC >= 128\"") );
+  if (channel.readRegister(EFLG) & 0b00010000)      //TXEP
+    activeSerial->print( F(", \n\"Transmit Error Warning - TEC >= 128\"") );
+  if (channel.readRegister(EFLG) & 0b00100000)      //TXBO
+    activeSerial->print( F(", \n\"Bus Off - TEC exceeded 255\"") );
+  if (channel.readRegister(EFLG) & 0b01000000)      //RX0OVR
+    activeSerial->print( F(", \n\"Receive Buffer 0 Overflow\"") );
+  if (channel.readRegister(EFLG) & 0b10000000)      //RX1OVR
+    activeSerial->print( F(", \n\"\"Receive Buffer 1 Overflow\"") );
+  if (channel.readRegister(EFLG) ==0)                  //No errors
+    activeSerial->print( F(" - No Errors\"") );
+  
+}
+
+
+
 void SerialCommand::printChannelDebug(CANBus channel){
 
   activeSerial->print( F("{\"e\":\"busdgb\", \"name\":\"") );
@@ -483,8 +508,9 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( F("\", \"status\":\""));
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
-  activeSerial->print( channel.readRegister(EFLG), HEX );
-  activeSerial->print( F("\", \"nextTxBuffer\":\""));
+  activeSerial->print( channel.readRegister(EFLG), BIN );    // CHANGED FROM HEX TO DEC. VERIFIED ERROR 11 - in binary this is 1011
+  printEFLG(channel);
+  activeSerial->print( F(", \"nextTxBuffer\":\""));
   activeSerial->print( channel.getNextTxBuffer(), DEC );
   activeSerial->println(F("\"}"));
 
