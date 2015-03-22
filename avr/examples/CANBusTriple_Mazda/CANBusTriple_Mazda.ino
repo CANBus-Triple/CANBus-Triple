@@ -12,9 +12,13 @@
 #include <Message.h>
 #include <QueueArray.h>
 
-#define BUILD 0.4.0
-
-// #define RUN_SELF_TEST 1
+#define BUILDNAME "CANBus Triple"
+#ifdef HAS_AUTOMATIC_VERSIONING
+    #include "_Version.h"
+#else
+    #define BUILD_VERSION "0.4.2"
+#endif
+// #define SLEEP_ENABLE
 
 
 CANBus CANBus1(CAN1SELECT, CAN1RESET, 1, "Bus 1");
@@ -23,6 +27,7 @@ CANBus CANBus3(CAN3SELECT, CAN3RESET, 3, "Bus 3");
 CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 
 #include "Settings.h"
+#include "AutoBaud.h"
 #include "WheelButton.h"
 #include "MazdaWheelButton.h"
 #include "ChannelSwap.h"
@@ -31,7 +36,7 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 #include "MazdaLED.h"
 #include "Naptime.h"
 
-#include "SelfTest.h"
+// #include "SelfTest.h"
 
 
 byte rx_status;
@@ -51,11 +56,11 @@ MazdaLED *mazdaLed = new MazdaLED( &writeQueue, serialCommand );
 
 Middleware *activeMiddleware[] = {
   serialCommand,
-  // new ChannelSwap(),
-  // mazdaLed,
-  // serviceCall,
-  // new Naptime(0x0472, serialCommand),
-  // new MazdaWheelButton(mazdaLed, serviceCall)
+  new ChannelSwap(),
+  mazdaLed,
+  serviceCall,
+  new Naptime(0x0472, serialCommand),
+  new MazdaWheelButton(mazdaLed, serviceCall)
 };
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );
 
@@ -112,8 +117,7 @@ void setup(){
   // Setup CAN Busses
   CANBus1.begin();
   CANBus1.setClkPre(1);
-  // CANBus1.baudConfig(cbt_settings.busCfg[0].baud);
-  CANBus1.baudConfig(125);
+  CANBus1.baudConfig(cbt_settings.busCfg[0].baud);
   CANBus1.setRxInt(true);
   CANBus1.bitModify(RXB0CTRL, 0x04, 0x04); // Set buffer rollover enabled
   CANBus1.bitModify(CNF2, 0x20, 0x20); // Enable wake-up filter
@@ -122,17 +126,15 @@ void setup(){
   // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
 
   CANBus2.begin();
-  // CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
-  CANBus2.baudConfig(125);
+  CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
   CANBus2.setRxInt(true);
   CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
-  CANBus2.setMode(NORMAL);
+  CANBus2.setMode(LISTEN);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
 
   CANBus3.begin();
-  // CANBus3.baudConfig(cbt_settings.busCfg[2].baud);
-  CANBus3.baudConfig(125);
+  CANBus3.baudConfig(cbt_settings.busCfg[2].baud);
   CANBus3.setRxInt(true);
   CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus3.clearFilters();
@@ -140,22 +142,11 @@ void setup(){
   // attachInterrupt(CAN3INT, handleInterrupt3, LOW);
 
 
-
-  /*
-  *  Hardware Self Test
-  */
-  #ifdef RUN_SELF_TEST
-    if( cbt_settings.hwselftest == 0 )
-      SelfTest::run();
-  #endif
-
-
-
-  // Setup CAN bus 2 filter
+   // Setup CAN bus 2 filter
   CANBus2.setMode(CONFIGURATION);
   CANBus2.setFilter( serviceCall->filterPids[0], serviceCall->filterPids[1] );
   CANBus2.setMode(NORMAL);
-
+  
 
   for (int b = 0; b<5; b++) {
     digitalWrite( BOOT_LED, HIGH );
@@ -163,6 +154,10 @@ void setup(){
     digitalWrite( BOOT_LED, LOW );
     delay(50);
   }
+
+
+ 
+
 
 
 
@@ -317,18 +312,6 @@ void processMessage( Message msg ){
     writeQueue.push( msg );
 
 }
-
-
-/*
-*  Cycle through available baud rates and listen for successful packets
-*  Save successful baud rate to cbt_settings structure
-*/
-void baudDetect(byte busId){
-
-
-
-}
-
 
 
 

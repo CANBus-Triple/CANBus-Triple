@@ -8,6 +8,10 @@ System Info and EEPROM
 0x01 0x02        Dump eeprom value
 0x01 0x03        read and save eeprom
 0x01 0x04        restore eeprom to stock values
+0x01 0x08 0x01   Auto detect baud rate for bus 1 (handled by AutoBaud.h)
+0x01 0x08 0x02   Auto baud bus 2
+0x01 0x08 0x03   Auto baud bus 3
+0x01 0x09 0x01 N Set baud rate on bus 1 to N (N is 16 bits)
 0x01 0x10 0x01   Print Bus 1 Debug to Serial
 0x01 0x10 0x02   Print Bus 1 Debug to Serial
 0x01 0x10 0x03   Print Bus 1 Debug to Serial
@@ -40,7 +44,7 @@ Cmd  Function
 0x08  0x01 Reset BLE112
 0x08  0x02 Enter pass through mode to talk to BLE112
 0x08  0x03 Exit pass through mode
-TODO: Implenent this ^^^
+TODO: Implement this ^^^
 */
 
 
@@ -72,7 +76,6 @@ class SerialCommand : public Middleware
     void tick();
     Message process( Message msg );
     void commandHandler(byte* bytes, int length);
-
     Stream* activeSerial;
     void printMessageToSerial(Message msg);
     void registerCommand(byte commandId, Middleware *cbInstance);
@@ -90,6 +93,7 @@ class SerialCommand : public Middleware
     void settingsCall();
     void dumpEeprom();
     void getAndSaveEeprom();
+    void baudRate();
     void logCommand();
     void bluetooth();
     void setBluetoothFilter();
@@ -288,8 +292,15 @@ void SerialCommand::settingsCall()
     case 0x04:
       Settings::firstbootSetup();
     break;
+    case 0x08:
+      getCommandBody( cmd, 1 );
+      AutoBaud::baudDetect(cmd[0], activeSerial);
+    break;
+    case 0x09:
+      baudRate();
+    break;
     case 0x10:
-        printChannelDebug();
+      printChannelDebug();
     break;
     case 0x16:
       resetToBootloader();
@@ -311,6 +322,25 @@ void SerialCommand::setBluetoothFilter(){
     btMessageIdFilters[cmd[0]][1] = (cmd[3] << 8)+cmd[4];
   }
 
+}
+
+
+
+void SerialCommand::baudRate(){
+  
+  byte cmd[3],
+       bytesRead;
+  
+  bytesRead = getCommandBody( cmd, 3 );
+  
+  if(bytesRead == 3)
+    Settings::setBaudRate( cmd[0], (cmd[1] << 8) + cmd[2] );
+  
+  activeSerial->print( F( "{'e':'baud', 'bus':" ) );
+  activeSerial->print(cmd[0]);
+  activeSerial->print( F( ", 'rate':" ) );
+  activeSerial->print( Settings::getBaudRate( cmd[0] ), DEC );
+  activeSerial->println( F( "}" ) ); 
 }
 
 
@@ -467,6 +497,7 @@ void SerialCommand::printSystemDebug()
   activeSerial->println(F("\"}"));
 }
 
+
 void SerialCommand::printChannelDebug(){
 
   byte cmd[1];
@@ -507,6 +538,8 @@ void SerialCommand::registerCommand(byte commandId, Middleware *cbInstance)
 }
 
 
+
+
 void SerialCommand::resetToBootloader()
 {
   cli();
@@ -524,9 +557,9 @@ void SerialCommand::dumpEeprom()
 {
   // dump eeprom
   for(int i=0; i<512; i++){
-	uint8_t v = EEPROM.read(i);
-	if (v < 0x10)
-	  activeSerial->print( "0" );
+    uint8_t v = EEPROM.read(i);
+    if (v < 0x10)		
+      activeSerial->print( "0" );
     activeSerial->print( v, HEX );
     if(i<511) activeSerial->print( ":" );
   }
