@@ -58,7 +58,6 @@ void Settings::save( struct cbt_settings *settings )
   eeprom_write_block((const void*)settings, (void*)0, sizeof(cbt_settings));
 }
 
-
 void Settings::clear()
 {
   for (int i = 0; i < 512; i++)

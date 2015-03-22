@@ -41,6 +41,8 @@ class Settings
    static void clear();
    static void firstbootSetup();
    const static int pidLength = 8;
+   static void setBaudRate(byte busId, int rate);
+   static int getBaudRate(byte busId);
 };
 
 
@@ -56,6 +58,19 @@ void Settings::init()
 void Settings::save( struct cbt_settings *settings )
 {
   eeprom_write_block((const void*)settings, (void*)0, sizeof(cbt_settings));
+}
+
+void Settings::setBaudRate(byte busId, int rate){
+  if( (busId < 1 || busId > 3) || rate < 1 ) return;
+
+  cbt_settings.busCfg[busId-1].baud = rate;
+  save(&cbt_settings);
+}
+
+int Settings::getBaudRate(byte busId){
+  if( (busId < 1 || busId > 3)) return 0;
+
+  return cbt_settings.busCfg[busId-1].baud;
 }
 
 
@@ -75,8 +90,8 @@ void Settings::firstbootSetup()
     1, // firstboot
     0, // displayIndex
     {
+      { 1000 },
       { 125 },
-      { 500 },
       { 125 }
     },
     0, // hwselftest
@@ -193,5 +208,3 @@ void Settings::firstbootSetup()
 
 
 }
-
-

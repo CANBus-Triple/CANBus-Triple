@@ -106,8 +106,6 @@ byte mwCommandIndex = 0;
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
-
-
 SerialCommand::SerialCommand( QueueArray<Message> *q )
 {
   mainQueue = q;
@@ -221,8 +219,6 @@ void SerialCommand::printMessageToSerial( Message msg )
 }
 
 
-
-
 void SerialCommand::processCommand(int command)
 {
 
@@ -262,8 +258,6 @@ void SerialCommand::processCommand(int command)
     break;
   }
 
-
-
   clearBuffer();
 }
 
@@ -301,7 +295,6 @@ void SerialCommand::settingsCall()
 }
 
 
-
 void SerialCommand::setBluetoothFilter(){
 
   byte cmd[5];
@@ -313,7 +306,6 @@ void SerialCommand::setBluetoothFilter(){
   }
 
 }
-
 
 
 void SerialCommand::logCommand()
@@ -406,7 +398,6 @@ void SerialCommand::getAndSend()
 }
 
 
-
 void SerialCommand::bluetooth(){
 
   byte cmd[1];
@@ -432,9 +423,6 @@ void SerialCommand::bluetooth(){
   }
 
 }
-
-
-
 
 
 int SerialCommand::getCommandBody( byte* cmd, int length )
@@ -496,7 +484,6 @@ void SerialCommand::printEFLG(CANBus channel) {
     activeSerial->print( F(" - No Errors\"") );
 
 }
-
 
 
 void SerialCommand::printChannelDebug(CANBus channel){

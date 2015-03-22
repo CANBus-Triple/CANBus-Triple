@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.4.0"
+    #define BUILD_VERSION "0.4.2"
 #endif
 // #define SLEEP_ENABLE
 
@@ -27,17 +27,16 @@ CANBus CANBus3(CAN3SELECT, CAN3RESET, 3, "Bus 3");
 CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 
 #include "Settings.h"
-#include "ChannelSwap.h"
+#include "AutoBaud.h"
 #include "SerialCommand.h"
 #include "ServiceCall.h"
+#include "ChannelSwap.h"
 #include "Naptime.h"
 
 
 byte rx_status;
 QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
-
-
 
 
 /*
@@ -49,8 +48,8 @@ ServiceCall *serviceCall = new ServiceCall( &writeQueue );
 
 Middleware *activeMiddleware[] = {
   serialCommand,
-  new ChannelSwap(),
-  serviceCall,
+  // new ChannelSwap(),
+  // serviceCall,
   #ifdef SLEEP_ENABLE
   new Naptime(0x0472, serialCommand),
   #endif
@@ -119,11 +118,10 @@ void setup(){
 
   CANBus2.begin();
   CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
-  CANBus2.baudConfig(125);
   CANBus2.setRxInt(true);
   CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
-  CANBus2.setMode(NORMAL);
+  CANBus2.setMode(LISTEN);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
 
   CANBus3.begin();
@@ -140,9 +138,6 @@ void setup(){
     digitalWrite( BOOT_LED, LOW );
     delay(50);
   }
-
-
-
 
   // wdt_enable(WDTO_1S);
 
@@ -197,13 +192,10 @@ void loop() {
   }
 
 
-
-
   // Pet the dog
   // wdt_reset();
 
 } // End loop()
-
 
 
 /*
@@ -241,7 +233,6 @@ boolean sendMessage( Message msg, CANBus bus ){
   return true;
 
 }
-
 
 
 /*
@@ -290,18 +281,3 @@ void processMessage( Message msg ){
     writeQueue.push( msg );
 
 }
-
-
-/*
-*  Cycle through available baud rates and listen for successful packets
-*  Save successful baud rate to cbt_settings structure
-*/
-void baudDetect(byte busId){
-
-
-
-}
-
-
-
-
