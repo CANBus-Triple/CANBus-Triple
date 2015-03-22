@@ -90,7 +90,7 @@ void Settings::firstbootSetup()
     1, // firstboot
     0, // displayIndex
     {
-      { 1000 },
+      { 125 },
       { 125 },
       { 125 }
     },
