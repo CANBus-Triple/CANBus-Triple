@@ -9,6 +9,9 @@ Modified by Derek Kuschel for use with multiple MCP2515
 #include "Arduino.h"
 #include <CANBus.h>
 
+//define OLD_BAUD
+#define FREQ 16
+
 
 
 CANBus::CANBus( int ss, int reset, unsigned int bid, String nameString )
@@ -52,8 +55,17 @@ void CANBus::begin()//constructor for initializing can module.
 	delay(50);
 }
 
+void CANBus::reset()//constructor for initializing can module.
+{
+    digitalWrite(_ss, LOW);
+    delay(1);
+    SPI.transfer(RESET_REG);
+    delay(1);
+    digitalWrite(_ss, HIGH);
+}
 
-void CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
+#ifdef OLD_BAUD
+bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
 {
 	byte config0, config1, config2;
 
@@ -77,6 +89,13 @@ case 50:
 		config2 = 0x05;
 		break;
 
+case 83:
+        // TODO
+        config0 = 0x00;
+        config1 = 0x00;
+        config2 = 0x00;
+        break;
+            
 case 100:
 		config0 = 0x04;
 		config1 = 0xB8;
@@ -112,7 +131,7 @@ case 1000:
 	digitalWrite(_ss, LOW);
 	delay(1);
 	SPI.transfer(WRITE);
-	SPI.transfer(CNF0);
+	SPI.transfer(CNF1);
 	SPI.transfer(config0);
 	delay(1);
 	digitalWrite(_ss, HIGH);
@@ -121,7 +140,7 @@ case 1000:
 	digitalWrite(_ss, LOW);
 	delay(1);
 	SPI.transfer(WRITE);
-	SPI.transfer(CNF1);
+	SPI.transfer(CNF2);
 	SPI.transfer(config1);
 	delay(1);
 	digitalWrite(_ss, HIGH);
@@ -130,12 +149,118 @@ case 1000:
 	digitalWrite(_ss, LOW);
 	delay(1);
 	SPI.transfer(WRITE);
-	SPI.transfer(CNF2);
+	SPI.transfer(CNF3);
 	SPI.transfer(config2);
 	delay(1);
 	digitalWrite(_ss, HIGH);
 	delay(1);
+    
+    return true;
 }
+
+
+#else
+/*
+*   New Baud rate calculation
+*/
+
+bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
+{
+
+    // Calculate bit timing registers
+    byte BRP;
+    float TQ;
+    byte BT;
+    float tempBT;
+
+    float NBT = 1.0 / (float)bitRate * 1000.0; // Nominal Bit Time
+    
+    for( BRP=0; BRP<8 ;BRP++ ) {
+        TQ = 2.0 * (float)(BRP + 1) / (float)FREQ;
+        tempBT = NBT / TQ;
+        
+        if(tempBT<=25) {
+            BT = (int)tempBT;
+            if(tempBT-BT==0) break;
+        }
+    }
+
+    byte SPT = (0.8 * BT); // Sample point 80%
+    byte PRSEG = (SPT - 1) / 2;
+    byte PHSEG1 = SPT - PRSEG - 1;
+    byte PHSEG2 = BT - PHSEG1 - PRSEG - 1;
+
+    byte SJW = 1;
+    
+    // Programming requirements
+    if(PRSEG + PHSEG1 < PHSEG2) return false;
+    if(PHSEG2 <= SJW) return false;
+
+    byte BTLMODE = 1;
+    byte SAM = 0;
+
+    // Set registers
+    byte config1 = (((SJW-1) << 6) | BRP);
+    byte config2 = ((BTLMODE << 7) | (SAM << 6) | ((PHSEG1-1) << 3) | (PRSEG-1));
+    byte config3 = (B00000000 | (PHSEG2-1));
+    
+    digitalWrite(_ss, LOW);
+    delay(1);
+    SPI.transfer(WRITE);
+    SPI.transfer(CNF1);
+    SPI.transfer(config1);
+    delay(1);
+    digitalWrite(_ss, HIGH);
+    delay(1);
+
+    digitalWrite(_ss, LOW);
+    delay(1);
+    SPI.transfer(WRITE);
+    SPI.transfer(CNF2);
+    SPI.transfer(config2);
+    delay(1);
+    digitalWrite(_ss, HIGH);
+    delay(1);
+
+    digitalWrite(_ss, LOW);
+    delay(1);
+    SPI.transfer(WRITE);
+    SPI.transfer(CNF3);
+    SPI.transfer(config3);
+    delay(1);
+    digitalWrite(_ss, HIGH);
+    delay(1);
+    
+    /*
+    Serial.print("Bit rate = ");
+    Serial.println(bitRate);
+    Serial.print("TQ = ");
+    Serial.println(TQ);
+    Serial.print("BT = ");
+    Serial.println(BT);
+    Serial.print("BRP = ");
+    Serial.println(BRP);
+    Serial.print("Prop = ");
+    Serial.println(PRSEG);
+    Serial.print("Phase 1 = ");
+    Serial.println(PHSEG1);
+    Serial.print("Phase 2 = ");
+    Serial.println(PHSEG2);
+    
+    Serial.print("CNT1 ");
+    Serial.println(config1, BIN);
+    Serial.print("CNT2 ");
+    Serial.println(config2, BIN);
+    Serial.print("CNT3 ");
+    Serial.println(config3, BIN);
+    */
+    
+    return true;
+ 
+}
+#endif
+
+
 
 
 void CANBus::bitModify( byte reg, byte value, byte mask  ){
