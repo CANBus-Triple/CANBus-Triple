@@ -9,6 +9,8 @@ Modified by Derek Kuschel for use with multiple MCP2515
 #include "Arduino.h"
 #include <CANBus.h>
 
+//define OLD_BAUD
+#define FREQ 16
 
 
 CANBus::CANBus( int ss, int reset, unsigned int bid, String nameString )
@@ -52,8 +54,17 @@ void CANBus::begin()//constructor for initializing can module.
 	delay(50);
 }
 
+void CANBus::reset()//constructor for initializing can module.
+{
+    digitalWrite(_ss, LOW);
+    delay(1);
+    SPI.transfer(RESET_REG);
+    delay(1);
+    digitalWrite(_ss, HIGH);
+}
 
-void CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
+#ifdef OLD_BAUD
+bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
 {
 	byte config0, config1, config2;
 
@@ -76,6 +87,13 @@ case 50:
 		config1 = 0xB8;
 		config2 = 0x05;
 		break;
+
+case 83:
+        // TODO
+        config0 = 0x00;
+        config1 = 0x00;
+        config2 = 0x00;
+        break;
 
 case 100:
 		config0 = 0x04;
@@ -112,7 +130,7 @@ case 1000:
 	digitalWrite(_ss, LOW);
 	delay(1);
 	SPI.transfer(WRITE);
-	SPI.transfer(CNF0);
+	SPI.transfer(CNF1);
 	SPI.transfer(config0);
 	delay(1);
 	digitalWrite(_ss, HIGH);
@@ -121,7 +139,7 @@ case 1000:
 	digitalWrite(_ss, LOW);
 	delay(1);
 	SPI.transfer(WRITE);
-	SPI.transfer(CNF1);
+	SPI.transfer(CNF2);
 	SPI.transfer(config1);
 	delay(1);
 	digitalWrite(_ss, HIGH);
@@ -130,12 +148,116 @@ case 1000:
 	digitalWrite(_ss, LOW);
 	delay(1);
 	SPI.transfer(WRITE);
-	SPI.transfer(CNF2);
+	SPI.transfer(CNF3);
 	SPI.transfer(config2);
 	delay(1);
 	digitalWrite(_ss, HIGH);
 	delay(1);
+
+  return true;
 }
+
+
+#else
+/*
+*   New Baud rate calculation
+*/
+
+bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
+{
+
+    // Calculate bit timing registers
+    byte BRP;
+    float TQ;
+    byte BT;
+    float tempBT;
+
+    float NBT = 1.0 / (float)bitRate * 1000.0; // Nominal Bit Time
+
+    for( BRP=0; BRP<8 ;BRP++ ) {
+        TQ = 2.0 * (float)(BRP + 1) / (float)FREQ;
+        tempBT = NBT / TQ;
+
+        if(tempBT<=25) {
+            BT = (int)tempBT;
+            if(tempBT-BT==0) break;
+        }
+    }
+
+    byte SPT = (0.8 * BT); // Sample point 80%
+    byte PRSEG = (SPT - 1) / 2;
+    byte PHSEG1 = SPT - PRSEG - 1;
+    byte PHSEG2 = BT - PHSEG1 - PRSEG - 1;
+
+    byte SJW = 1;
+
+    // Programming requirements
+    if(PRSEG + PHSEG1 < PHSEG2) return false;
+    if(PHSEG2 <= SJW) return false;
+
+    byte BTLMODE = 1;
+    byte SAM = 0;
+
+    // Set registers
+    byte config1 = (((SJW-1) << 6) | BRP);
+    byte config2 = ((BTLMODE << 7) | (SAM << 6) | ((PHSEG1-1) << 3) | (PRSEG-1));
+    byte config3 = (B00000000 | (PHSEG2-1));
+
+    digitalWrite(_ss, LOW);
+    delay(1);
+    SPI.transfer(WRITE);
+    SPI.transfer(CNF1);
+    SPI.transfer(config1);
+    delay(1);
+    digitalWrite(_ss, HIGH);
+    delay(1);
+
+    digitalWrite(_ss, LOW);
+    delay(1);
+    SPI.transfer(WRITE);
+    SPI.transfer(CNF2);
+    SPI.transfer(config2);
+    delay(1);
+    digitalWrite(_ss, HIGH);
+    delay(1);
+
+    digitalWrite(_ss, LOW);
+    delay(1);
+    SPI.transfer(WRITE);
+    SPI.transfer(CNF3);
+    SPI.transfer(config3);
+    delay(1);
+    digitalWrite(_ss, HIGH);
+    delay(1);
+
+    /*
+    Serial.print("Bit rate = ");
+    Serial.println(bitRate);
+    Serial.print("TQ = ");
+    Serial.println(TQ);
+    Serial.print("BT = ");
+    Serial.println(BT);
+    Serial.print("BRP = ");
+    Serial.println(BRP);
+    Serial.print("Prop = ");
+    Serial.println(PRSEG);
+    Serial.print("Phase 1 = ");
+    Serial.println(PHSEG1);
+    Serial.print("Phase 2 = ");
+    Serial.println(PHSEG2);
+
+    Serial.print("CNT1 ");
+    Serial.println(config1, BIN);
+    Serial.print("CNT2 ");
+    Serial.println(config2, BIN);
+    Serial.print("CNT3 ");
+    Serial.println(config3, BIN);
+    */
+
+    return true;
+
+}
+#endif
 
 
 void CANBus::bitModify( byte reg, byte value, byte mask  ){
@@ -159,6 +281,7 @@ int CANBus::getNextTxBuffer(){
     return -1;
 
 }
+
 
 void CANBus::setFilter( int filter0, int filter1 ){
 
@@ -190,15 +313,11 @@ void CANBus::setFilter( int filter0, int filter1 ){
 
 }
 
+
 void CANBus::clearFilters(){
     this->writeRegister(RXM0SIDH, 0, 0 );
     this->writeRegister(RXM1SIDH, 0, 0 );
 }
-
-
-
-
-
 
 
 // Enable / Disable interrupt pin on message Rx
@@ -277,7 +396,6 @@ void CANBus::setClkPre(int mode){
 }
 
 
-
 //Method added to enable testing in loopback mode.(pcruce_at_igpp.ucla.edu)
 void CANBus::setMode(CANMode mode) { //put CAN controller in one of five modes
 
@@ -325,6 +443,7 @@ void CANBus::send_0()//transmits buffer 0
 	digitalWrite(_ss, HIGH);
 }
 
+
 void CANBus::send_1()//transmits buffer 1
 {
 	digitalWrite(_ss, LOW);
@@ -332,12 +451,14 @@ void CANBus::send_1()//transmits buffer 1
 	digitalWrite(_ss, HIGH);
 }
 
+
 void CANBus::send_2()//transmits buffer 2
 {
 	digitalWrite(_ss, LOW);
 	SPI.transfer(SEND_TX_BUF_2);
 	digitalWrite(_ss, HIGH);
 }
+
 
 char CANBus::readID_0()//reads ID in recieve buffer 0
 {
@@ -352,6 +473,7 @@ char CANBus::readID_0()//reads ID in recieve buffer 0
 	return retVal;
 }
 
+
 char CANBus::readID_1()//reads ID in reciever buffer 1
 {
 	char retVal;
@@ -364,6 +486,7 @@ char CANBus::readID_1()//reads ID in reciever buffer 1
 	delay(1);
 	return retVal;
 }
+
 
 char CANBus::readDATA_0()//reads DATA in recieve buffer 0
 {
@@ -391,9 +514,10 @@ char CANBus::readDATA_1()//reads data in recieve buffer 1
 	return retVal;
 }
 
-	//extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
-	//It is the responsibility of the user to allocate memory for output.
-	//If you don't know what length the bus frames will be, data_out should be 8-bytes
+
+//extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
+//It is the responsibility of the user to allocate memory for output.
+//If you don't know what length the bus frames will be, data_out should be 8-bytes
 void CANBus::readDATA_ff_0(byte* length_out,byte *data_out,unsigned short *id_out){
 
 	byte len,i;
@@ -415,6 +539,7 @@ void CANBus::readDATA_ff_0(byte* length_out,byte *data_out,unsigned short *id_ou
 
 }
 
+
 void CANBus::readDATA_ff_1(byte* length_out,byte *data_out,unsigned short *id_out){
 
 	byte id_h,id_l,len,i;
@@ -434,7 +559,6 @@ void CANBus::readDATA_ff_1(byte* length_out,byte *data_out,unsigned short *id_ou
 	(*length_out) = len;
 	(*id_out) = ((((unsigned short) id_h) << 3) + ((id_l & 0xE0) >> 5)); //repack identifier
 }
-
 
 
 byte CANBus::readStatus()
@@ -471,6 +595,7 @@ void CANBus::writeRegister( int addr, byte value )
 	digitalWrite(_ss, HIGH);
 	delay(1);
 }
+
 
 void CANBus::writeRegister( int addr, byte value, byte value2 )
 {
@@ -559,6 +684,7 @@ void CANBus::load_0(byte identifier, byte data)//loads ID and DATA into transmit
 	delay(1);
 }
 
+
 void CANBus::load_1(byte identifier, byte data)//loads ID and DATA into transmit buffer 1
 {
 	digitalWrite(_ss, LOW);
@@ -578,6 +704,7 @@ void CANBus::load_1(byte identifier, byte data)//loads ID and DATA into transmit
 	delay(1);
 }
 
+
 void CANBus::load_2(byte identifier, byte data)//loads ID and DATA into transmit buffer 2
 {
 	digitalWrite(_ss, LOW);
@@ -596,6 +723,7 @@ void CANBus::load_2(byte identifier, byte data)//loads ID and DATA into transmit
 	digitalWrite(_ss, HIGH);
 	delay(1);
 }
+
 
 void CANBus::load_ff_0(byte length,unsigned short identifier,byte *data)
 {
@@ -621,6 +749,7 @@ void CANBus::load_ff_0(byte length,unsigned short identifier,byte *data)
 
 }
 
+
 void CANBus::load_ff_1(byte length,unsigned short identifier,byte *data)
 {
 
@@ -643,8 +772,8 @@ void CANBus::load_ff_1(byte length,unsigned short identifier,byte *data)
 
 	digitalWrite(_ss, HIGH);
 
-
 }
+
 
 void CANBus::load_ff_2(byte length,unsigned short identifier,byte *data)
 {

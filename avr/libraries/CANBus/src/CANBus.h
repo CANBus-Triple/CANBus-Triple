@@ -89,9 +89,9 @@ CNF3=b'00000010'=0x02 = SOF = 0  & WAKFIL = 0 & PS2 = 3
 
 
 //Registers
-#define CNF0 0x2A
-#define CNF1 0x29
-#define CNF2 0x28
+#define CNF1 0x2A
+#define CNF2 0x29
+#define CNF3 0x28
 #define TXB0CTRL 0x30
 #define TXB1CTRL 0x40
 #define TXB2CTRL 0x50 //TRANSMIT BUFFER CONTROL REGISTER
@@ -149,6 +149,8 @@ CNF3=b'00000010'=0x02 = SOF = 0  & WAKFIL = 0 & PS2 = 3
 #define RXM1SIDH	0x24
 #define RXM1SIDL	0x25
 
+#define MERRF       0x80
+
 
 
 #include "Arduino.h"
@@ -182,7 +184,9 @@ public:
     void setBusId(unsigned int n);
 
     void begin();                       //sets up MCP2515
-    void baudConfig(int bitRate);       //sets up baud
+    bool baudConfig(int bitRate);       //sets up baud
+
+    void reset();                       // Send MCP2515 Reset command
 
     void bitModify( byte reg, byte value, byte mask  );
 
