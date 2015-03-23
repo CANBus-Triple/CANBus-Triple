@@ -298,7 +298,7 @@ void processMessage( Message msg ){
 */
 void baudDetect(byte busId){
 
-  
+
 
 }
 

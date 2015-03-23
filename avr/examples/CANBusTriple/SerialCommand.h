@@ -493,7 +493,7 @@ void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b10000000)      //RX1OVR
     activeSerial->print( F(", \n\"\"Receive Buffer 1 Overflow\"") );
   if (channel.readRegister(EFLG) ==0)                  //No errors
-    activeSerial->print( F(" - No Errors\"") ); 
+    activeSerial->print( F(" - No Errors\"") );
 }
 
 void SerialCommand::printChannelDebug(CANBus channel){
@@ -505,7 +505,7 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( F("\", \"status\":\""));
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
-  activeSerial->print( channel.readRegister(EFLG), BIN ); 
+  activeSerial->print( channel.readRegister(EFLG), BIN );
   printEFLG(channel);
   activeSerial->print( F(", \"nextTxBuffer\":\""));
   activeSerial->print( channel.getNextTxBuffer(), DEC );

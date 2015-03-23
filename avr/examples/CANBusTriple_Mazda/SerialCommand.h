@@ -494,7 +494,7 @@ void SerialCommand::printEFLG(CANBus channel) {
     activeSerial->print( F(", \n\"\"Receive Buffer 1 Overflow\"") );
   if (channel.readRegister(EFLG) ==0)                  //No errors
     activeSerial->print( F(" - No Errors\"") );
-  
+
 }
 
 
