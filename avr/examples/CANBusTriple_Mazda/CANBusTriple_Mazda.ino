@@ -285,7 +285,7 @@ void readBus( CANBus bus ){
 
 
 /*
-*  Process recieved CAN message through middleware
+*  Process received CAN message through middleware
 */
 void processMessage( Message msg ){
 
