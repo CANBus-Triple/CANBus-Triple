@@ -1,4 +1,4 @@
-![Logo](http://canb.us/images/logo.svg)
+![Logo](https://www.canb.us/images/logo.svg)
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/CANBus-Triple/CANBus-Triple?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -14,7 +14,7 @@ This repository contains the base firmware and libraries for the CANBus Triple.
 
 ## Building
 ### Arduino IDE
-This code is tested with Arduino 1.6.0. [Download](http://arduino.cc/en/Main/Software) and install the appropriate file for your platform.
+This code is tested with Arduino 1.6.1. [Download](http://arduino.cc/en/Main/Software) and install the appropriate file for your platform.
 
 ### Get the code
 Clone this repo / download to your Arduino [Sketchbook](http://arduino.cc/en/guide/Environment#sketchbook)/hardware folder. The path should look like this
