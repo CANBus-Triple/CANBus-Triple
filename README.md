@@ -1,4 +1,4 @@
-![Logo](https://www.canb.us/images/logo.svg)
+![Logo](http://res.cloudinary.com/ddbgan4vk/image/upload/v1427295808/logo_py05gc.svg)
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/CANBus-Triple/CANBus-Triple?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
