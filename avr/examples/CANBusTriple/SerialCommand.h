@@ -223,7 +223,7 @@ void SerialCommand::printMessageToSerial( Message msg )
 void SerialCommand::processCommand(int command)
 {
 
-  delay(5); // Delay to wait for the entire command from Serial
+  delay(32); // Delay to wait for the entire command from Serial
 
   switch( command ){
     case 0x01:
