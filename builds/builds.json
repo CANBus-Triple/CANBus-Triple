@@ -1,0 +1,29 @@
+[
+    {
+        "name": "CANBus Triple",
+        "builds": [
+          {
+            "build":"0.4.2",
+            "path":"CANBusTriple_0.4.2.cpp.hex"
+          },
+          {
+            "build":"0.4.3",
+            "path":"CANBusTriple.cpp.hex"
+          }
+        ]
+    },
+    {
+        "name": "CANBus Triple Mazda",
+        "builds": [
+          {
+            "build":"0.4.2",
+            "path":"CANBusTriple_Mazda_0.4.2.cpp.hex"
+          },
+          {
+            "build":"0.4.3",
+            "path":"CANBusTriple_Mazda.cpp.hex"
+          }
+        ]
+    }
+
+]
