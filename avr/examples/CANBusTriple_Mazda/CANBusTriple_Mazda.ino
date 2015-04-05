@@ -1,8 +1,8 @@
 /*
 *  CANBus Triple
 *  The Car Hacking Platform
-*  http://canb.us
-*  https://github.com/etx/CANBus-Triple
+*  https://canb.us
+*  https://github.com/CANBus-Triple
 */
 
 #include <avr/wdt.h>
@@ -171,7 +171,7 @@ void handleInterrupt3(){
 
 
 /*
-*  TODO, Comment on this method
+*  Main Loop
 */
 void loop() {
 
@@ -214,7 +214,7 @@ void loop() {
 
 
 /*
-*  TODO, Comment on this method
+*  Load CAN Controller buffer and set send flag
 */
 boolean sendMessage( Message msg, CANBus bus ){
 
@@ -251,7 +251,7 @@ boolean sendMessage( Message msg, CANBus bus ){
 
 
 /*
-*  TODO, Comment on this method
+*  Read Can Controller Buffer
 */
 void readBus( CANBus bus ){
 
@@ -285,7 +285,7 @@ void readBus( CANBus bus ){
 
 
 /*
-*  TODO, Comment on this method
+*  Process recieved CAN message through middleware
 */
 void processMessage( Message msg ){
 
