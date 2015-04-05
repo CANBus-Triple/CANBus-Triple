@@ -529,7 +529,7 @@ void SerialCommand::printEFLG(CANBus channel) {
 
 void SerialCommand::printChannelDebug(CANBus channel){
 
-  activeSerial->print( F("{\"e\":\"busdgb\", \"name\":\"") );
+  activeSerial->print( F("{\"event\":\"busdbg\", \"name\":\"") );
   activeSerial->print( channel.name );
   activeSerial->print( F("\", \"canctrl\":\""));
   activeSerial->print( channel.readRegister(CANCTRL), HEX );
