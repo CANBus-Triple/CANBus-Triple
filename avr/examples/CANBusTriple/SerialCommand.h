@@ -110,8 +110,6 @@ byte mwCommandIndex = 0;
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
-
-
 SerialCommand::SerialCommand( QueueArray<Message> *q )
 {
   mainQueue = q;
@@ -177,8 +175,6 @@ void SerialCommand::printMessageToSerial( Message msg )
     return;
   }
 
-
-
   #ifdef JSON_OUT
     // Output to serial as json string
     activeSerial->print(F("{\"packet\": {\"status\":\""));
@@ -200,7 +196,6 @@ void SerialCommand::printMessageToSerial( Message msg )
     activeSerial->println();
 
   #else
-
     // Bluetooth filter
     // TODO TEST
     if( activeSerial == &Serial1 &&
@@ -223,8 +218,6 @@ void SerialCommand::printMessageToSerial( Message msg )
   #endif
 
 }
-
-
 
 
 void SerialCommand::processCommand(int command)
@@ -265,8 +258,6 @@ void SerialCommand::processCommand(int command)
 
     break;
   }
-
-
 
   clearBuffer();
 }
@@ -312,7 +303,6 @@ void SerialCommand::settingsCall()
 }
 
 
-
 void SerialCommand::setBluetoothFilter(){
 
   byte cmd[5];
@@ -326,24 +316,22 @@ void SerialCommand::setBluetoothFilter(){
 }
 
 
-
 void SerialCommand::baudRate(){
-  
+
   byte cmd[3],
        bytesRead;
-  
+
   bytesRead = getCommandBody( cmd, 3 );
-  
+
   if(bytesRead == 3)
     Settings::setBaudRate( cmd[0], (cmd[1] << 8) + cmd[2] );
-  
+
   activeSerial->print( F( "{'e':'baud', 'bus':" ) );
   activeSerial->print(cmd[0]);
   activeSerial->print( F( ", 'rate':" ) );
   activeSerial->print( Settings::getBaudRate( cmd[0] ), DEC );
-  activeSerial->println( F( "}" ) ); 
+  activeSerial->println( F( "}" ) );
 }
-
 
 
 void SerialCommand::logCommand()
@@ -407,7 +395,6 @@ void SerialCommand::getAndSaveEeprom()
     activeSerial->println(F("\"}"));
   }
 
-
 }
 
 
@@ -436,7 +423,6 @@ void SerialCommand::getAndSend()
 }
 
 
-
 void SerialCommand::bluetooth(){
 
   byte cmd[1];
@@ -462,9 +448,6 @@ void SerialCommand::bluetooth(){
   }
 
 }
-
-
-
 
 
 int SerialCommand::getCommandBody( byte* cmd, int length )
@@ -524,8 +507,9 @@ void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b10000000)      //RX1OVR
     activeSerial->print( F(", \n\"\"Receive Buffer 1 Overflow\"") );
   if (channel.readRegister(EFLG) ==0)                  //No errors
-    activeSerial->print( F(" - No Errors\"") ); 
+    activeSerial->print( F(" - No Errors\"") );
 }
+
 
 void SerialCommand::printChannelDebug(CANBus channel){
 
@@ -536,7 +520,7 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( F("\", \"status\":\""));
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
-  activeSerial->print( channel.readRegister(EFLG), BIN ); 
+  activeSerial->print( channel.readRegister(EFLG), BIN );
   printEFLG(channel);
   activeSerial->print( F(", \"nextTxBuffer\":\""));
   activeSerial->print( channel.getNextTxBuffer(), DEC );
@@ -557,8 +541,6 @@ void SerialCommand::registerCommand(byte commandId, Middleware *cbInstance)
 }
 
 
-
-
 void SerialCommand::resetToBootloader()
 {
   cli();
@@ -577,13 +559,14 @@ void SerialCommand::dumpEeprom()
   // dump eeprom
   for(int i=0; i<512; i++){
     uint8_t v = EEPROM.read(i);
-    if (v < 0x10)		
+    if (v < 0x10)
       activeSerial->print( "0" );
     activeSerial->print( v, HEX );
     if(i<511) activeSerial->print( ":" );
   }
 
 }
+
 
 int SerialCommand::freeRam (){
   extern int __heap_start, *__brkval;
@@ -592,4 +575,3 @@ int SerialCommand::freeRam (){
 }
 
 #endif
-

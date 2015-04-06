@@ -39,8 +39,6 @@ QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
 
 
-
-
 /*
 *  Middleware Setup
 *  http://docs.canb.us/firmware/main.html
@@ -141,9 +139,6 @@ void setup(){
     delay(50);
   }
 
-
-
-
   // wdt_enable(WDTO_1S);
 
 }
@@ -197,13 +192,10 @@ void loop() {
   }
 
 
-
-
   // Pet the dog
   // wdt_reset();
 
 } // End loop()
-
 
 
 /*
@@ -241,7 +233,6 @@ boolean sendMessage( Message msg, CANBus bus ){
   return true;
 
 }
-
 
 
 /*
@@ -290,7 +281,3 @@ void processMessage( Message msg ){
     writeQueue.push( msg );
 
 }
-
-
-
-
