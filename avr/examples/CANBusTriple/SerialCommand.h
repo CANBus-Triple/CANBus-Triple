@@ -326,7 +326,7 @@ void SerialCommand::baudRate(){
   if(bytesRead == 3)
     Settings::setBaudRate( cmd[0], (cmd[1] << 8) + cmd[2] );
 
-  activeSerial->print( F( "{'e':'baud', 'bus':" ) );
+  activeSerial->print( F( "{'event':'baud', 'bus':" ) );
   activeSerial->print(cmd[0]);
   activeSerial->print( F( ", 'rate':" ) );
   activeSerial->print( Settings::getBaudRate( cmd[0] ), DEC );
