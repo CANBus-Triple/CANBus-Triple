@@ -223,7 +223,7 @@ void SerialCommand::printMessageToSerial( Message msg )
 void SerialCommand::processCommand(int command)
 {
 
-  delay(5); // Delay to wait for the entire command from Serial
+  delay(32); // Delay to wait for the entire command from Serial
 
   switch( command ){
     case 0x01:
@@ -513,7 +513,7 @@ void SerialCommand::printEFLG(CANBus channel) {
 
 void SerialCommand::printChannelDebug(CANBus channel){
 
-  activeSerial->print( F("{\"e\":\"busdgb\", \"name\":\"") );
+  activeSerial->print( F("{\"event\":\"busdbg\", \"name\":\"") );
   activeSerial->print( channel.name );
   activeSerial->print( F("\", \"canctrl\":\""));
   activeSerial->print( channel.readRegister(CANCTRL), HEX );

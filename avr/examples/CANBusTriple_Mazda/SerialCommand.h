@@ -225,7 +225,7 @@ void SerialCommand::printMessageToSerial( Message msg )
 void SerialCommand::processCommand(int command)
 {
 
-  delay(5); // Delay to wait for the entire command from Serial
+  delay(32); // Delay to wait for the entire command from Serial
 
   switch( command ){
     case 0x01:
@@ -486,13 +486,10 @@ void SerialCommand::printSystemDebug()
 
 
 void SerialCommand::printChannelDebug(){
-
   byte cmd[1];
   getCommandBody( cmd, 1 );
-
   if( cmd[0] > -1 && cmd[0] <= 3 )
     printChannelDebug( busses[cmd[0]-1] );
-
 }
 
 
@@ -515,20 +512,19 @@ void SerialCommand::printEFLG(CANBus channel) {
     activeSerial->print( F(", \n\"\"Receive Buffer 1 Overflow\"") );
   if (channel.readRegister(EFLG) ==0)                  //No errors
     activeSerial->print( F(" - No Errors\"") );
-
 }
 
 
 void SerialCommand::printChannelDebug(CANBus channel){
 
-  activeSerial->print( F("{\"e\":\"busdgb\", \"name\":\"") );
+  activeSerial->print( F("{\"event\":\"busdbg\", \"name\":\"") );
   activeSerial->print( channel.name );
   activeSerial->print( F("\", \"canctrl\":\""));
   activeSerial->print( channel.readRegister(CANCTRL), HEX );
   activeSerial->print( F("\", \"status\":\""));
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
-  activeSerial->print( channel.readRegister(EFLG), BIN );    // CHANGED FROM HEX TO DEC. VERIFIED ERROR 11 - in binary this is 1011
+  activeSerial->print( channel.readRegister(EFLG), BIN );
   printEFLG(channel);
   activeSerial->print( F(", \"nextTxBuffer\":\""));
   activeSerial->print( channel.getNextTxBuffer(), DEC );
