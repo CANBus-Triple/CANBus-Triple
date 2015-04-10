@@ -44,8 +44,6 @@ QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
 
 
-
-
 /*
 *  Middleware Setup
 *  http://docs.canb.us/firmware/main.html
@@ -146,7 +144,7 @@ void setup(){
   CANBus2.setMode(CONFIGURATION);
   CANBus2.setFilter( serviceCall->filterPids[0], serviceCall->filterPids[1] );
   CANBus2.setMode(NORMAL);
-  
+
 
   for (int b = 0; b<5; b++) {
     digitalWrite( BOOT_LED, HIGH );
@@ -154,12 +152,6 @@ void setup(){
     digitalWrite( BOOT_LED, LOW );
     delay(50);
   }
-
-
- 
-
-
-
 
 
   // wdt_enable(WDTO_1S);
@@ -215,13 +207,10 @@ void loop() {
   }
 
 
-
-
   // Pet the dog
   // wdt_reset();
 
 } // End loop()
-
 
 
 /*
@@ -261,7 +250,6 @@ boolean sendMessage( Message msg, CANBus bus ){
 }
 
 
-
 /*
 *  Read Can Controller Buffer
 */
@@ -297,7 +285,7 @@ void readBus( CANBus bus ){
 
 
 /*
-*  Process recieved CAN message through middleware
+*  Process received CAN message through middleware
 */
 void processMessage( Message msg ){
 
@@ -312,6 +300,3 @@ void processMessage( Message msg ){
     writeQueue.push( msg );
 
 }
-
-
-

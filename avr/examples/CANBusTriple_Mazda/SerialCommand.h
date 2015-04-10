@@ -13,8 +13,8 @@ System Info and EEPROM
 0x01 0x08 0x03   Auto baud bus 3
 0x01 0x09 0x01 N Set baud rate on bus 1 to N (N is 16 bits)
 0x01 0x10 0x01   Print Bus 1 Debug to Serial
-0x01 0x10 0x02   Print Bus 1 Debug to Serial
-0x01 0x10 0x03   Print Bus 1 Debug to Serial
+0x01 0x10 0x02   Print Bus 2 Debug to Serial
+0x01 0x10 0x03   Print Bus 3 Debug to Serial
 0x01 0x16        Reboot to bootloader
 
 
@@ -110,8 +110,6 @@ byte mwCommandIndex = 0;
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
-
-
 SerialCommand::SerialCommand( QueueArray<Message> *q )
 {
   mainQueue = q;
@@ -178,7 +176,6 @@ void SerialCommand::printMessageToSerial( Message msg )
   }
 
 
-
   #ifdef JSON_OUT
     // Output to serial as json string
     activeSerial->print(F("{\"packet\": {\"status\":\""));
@@ -225,8 +222,6 @@ void SerialCommand::printMessageToSerial( Message msg )
 }
 
 
-
-
 void SerialCommand::processCommand(int command)
 {
 
@@ -265,8 +260,6 @@ void SerialCommand::processCommand(int command)
 
     break;
   }
-
-
 
   clearBuffer();
 }
@@ -308,9 +301,7 @@ void SerialCommand::settingsCall()
     break;
   }
 
-
 }
-
 
 
 void SerialCommand::setBluetoothFilter(){
@@ -326,24 +317,22 @@ void SerialCommand::setBluetoothFilter(){
 }
 
 
-
 void SerialCommand::baudRate(){
-  
+
   byte cmd[3],
        bytesRead;
-  
+
   bytesRead = getCommandBody( cmd, 3 );
-  
+
   if(bytesRead == 3)
     Settings::setBaudRate( cmd[0], (cmd[1] << 8) + cmd[2] );
-  
-  activeSerial->print( F( "{'e':'baud', 'bus':" ) );
+
+  activeSerial->print( F( "{'event':'baud', 'bus':" ) );
   activeSerial->print(cmd[0]);
   activeSerial->print( F( ", 'rate':" ) );
   activeSerial->print( Settings::getBaudRate( cmd[0] ), DEC );
-  activeSerial->println( F( "}" ) ); 
+  activeSerial->println( F( "}" ) );
 }
-
 
 
 void SerialCommand::logCommand()
@@ -436,7 +425,6 @@ void SerialCommand::getAndSend()
 }
 
 
-
 void SerialCommand::bluetooth(){
 
   byte cmd[1];
@@ -464,9 +452,6 @@ void SerialCommand::bluetooth(){
 }
 
 
-
-
-
 int SerialCommand::getCommandBody( byte* cmd, int length )
 {
   unsigned int i = 0;
@@ -479,6 +464,7 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
 
   return i;
 }
+
 
 void SerialCommand::clearBuffer()
 {
@@ -503,8 +489,9 @@ void SerialCommand::printChannelDebug(){
   byte cmd[1];
   getCommandBody( cmd, 1 );
   if( cmd[0] > -1 && cmd[0] <= 3 )
-     printChannelDebug( busses[cmd[0]-1] );
+    printChannelDebug( busses[cmd[0]-1] );
 }
+
 
 void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b00000001)      //EWARN
@@ -524,8 +511,9 @@ void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b10000000)      //RX1OVR
     activeSerial->print( F(", \n\"\"Receive Buffer 1 Overflow\"") );
   if (channel.readRegister(EFLG) ==0)                  //No errors
-    activeSerial->print( F(" - No Errors\"") ); 
+    activeSerial->print( F(" - No Errors\"") );
 }
+
 
 void SerialCommand::printChannelDebug(CANBus channel){
 
@@ -536,7 +524,7 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( F("\", \"status\":\""));
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
-  activeSerial->print( channel.readRegister(EFLG), BIN ); 
+  activeSerial->print( channel.readRegister(EFLG), BIN );
   printEFLG(channel);
   activeSerial->print( F(", \"nextTxBuffer\":\""));
   activeSerial->print( channel.getNextTxBuffer(), DEC );
@@ -557,8 +545,6 @@ void SerialCommand::registerCommand(byte commandId, Middleware *cbInstance)
 }
 
 
-
-
 void SerialCommand::resetToBootloader()
 {
   cli();
@@ -569,6 +555,7 @@ void SerialCommand::resetToBootloader()
   EIMSK = 0; PCICR = 0; SPCR = 0; ACSR = 0; EECR = 0; ADCSRA = 0;
   TIMSK0 = 0; TIMSK1 = 0; TIMSK3 = 0;
   asm volatile("jmp 0x7000");
+
 }
 
 
@@ -577,13 +564,14 @@ void SerialCommand::dumpEeprom()
   // dump eeprom
   for(int i=0; i<512; i++){
     uint8_t v = EEPROM.read(i);
-    if (v < 0x10)		
+    if (v < 0x10)
       activeSerial->print( "0" );
     activeSerial->print( v, HEX );
     if(i<511) activeSerial->print( ":" );
   }
 
 }
+
 
 int SerialCommand::freeRam (){
   extern int __heap_start, *__brkval;
@@ -592,4 +580,3 @@ int SerialCommand::freeRam (){
 }
 
 #endif
-
