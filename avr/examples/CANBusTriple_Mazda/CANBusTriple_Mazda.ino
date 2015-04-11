@@ -126,7 +126,7 @@ void setup(){
   CANBus2.begin();
   CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
   CANBus2.setRxInt(true);
-  CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
+  CANBus2.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
   CANBus2.setMode(LISTEN);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
