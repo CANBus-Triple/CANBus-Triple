@@ -485,7 +485,7 @@ void SerialCommand::printSystemDebug()
 void SerialCommand::printChannelDebug(){
   byte cmd[1];
   getCommandBody( cmd, 1 );
-  if( cmd[0] > -1 && cmd[0] <= 3 )
+  if( cmd[0] > 0 && cmd[0] <= 3 )
      printChannelDebug( busses[cmd[0]-1] );
 }
 
