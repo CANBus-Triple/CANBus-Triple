@@ -23,8 +23,8 @@ struct cbt_settings {
   byte firstboot;
   byte displayIndex;
   struct busConfig busCfg[3];
-  byte placeholder4;
   byte hwselftest;
+  byte placeholder4;
   byte placeholder5;
   byte placeholder6;
   byte placeholder7;
