@@ -23,8 +23,8 @@ struct cbt_settings {
   byte firstboot;
   byte displayIndex;
   struct busConfig busCfg[3];
-  byte placeholder4;
   byte hwselftest;
+  byte placeholder4;
   byte placeholder5;
   byte placeholder6;
   byte placeholder7;
@@ -155,7 +155,7 @@ void Settings::firstbootSetup()
         { 0x04, 0x62, 0x05, 0xF4, 0x06, 0x23 },               /* RXF */
         { 0x30, 0x10 },                                       /* RXD */
         { 0x00, 0x1D, 0x00, 0x14, 0x00, 0x00 },               /* MTH */
-        { 0x46, 0x50, 0x52, 0x00, 0x4b, 0x20, 0x20, 0x20 }    /* NAM */
+        { 0x46, 0x50, 0x52, 0x20, 0x4b, 0x20, 0x20, 0x20 }    /* NAM */
       },
       {
         // VAR CAM TIMING
