@@ -284,21 +284,18 @@ int CANBus::getNextTxBuffer(){
 
 
 void CANBus::setFilter( int filter0, int filter1 ){
-
-    // RXB0
+    
     byte SIDH = filter0 >> 3;
     byte SIDL = filter0 << 5;
-    this->writeRegister(RXF0SIDH, SIDH, SIDL );
-    this->writeRegister(RXF2SIDH, SIDH, SIDL );
+    this->writeRegister(RXF0SIDH, SIDH, SIDL ); // RXB0
+    this->writeRegister(RXF2SIDH, SIDH, SIDL ); // RXB1
 
-    // RXB1
     SIDH = filter1 >> 3;
     SIDL = filter1 << 5;
-
-    this->writeRegister(RXF1SIDH, SIDH, SIDL );
-    this->writeRegister(RXF3SIDH, SIDH, SIDL );
-    this->writeRegister(RXF4SIDH, SIDH, SIDL );
-    this->writeRegister(RXF5SIDH, SIDH, SIDL );
+    this->writeRegister(RXF1SIDH, SIDH, SIDL ); // RXB0
+    this->writeRegister(RXF3SIDH, SIDH, SIDL ); // RXB1
+    this->writeRegister(RXF4SIDH, SIDH, SIDL ); // RXB1
+    this->writeRegister(RXF5SIDH, SIDH, SIDL ); // RXB1
 
     // Set mask to match everything
     /*
