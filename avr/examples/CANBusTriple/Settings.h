@@ -29,7 +29,7 @@ struct cbt_settings {
   byte placeholder6;
   byte placeholder7;
   struct pid pids[8];
-  byte padding[32];
+  byte padding[256];
 } cbt_settings;
 
 
@@ -62,14 +62,14 @@ void Settings::save( struct cbt_settings *settings )
 
 void Settings::setBaudRate(byte busId, int rate){
   if( (busId < 1 || busId > 3) || rate < 1 ) return;
-
+  
   cbt_settings.busCfg[busId-1].baud = rate;
   save(&cbt_settings);
 }
 
 int Settings::getBaudRate(byte busId){
   if( (busId < 1 || busId > 3)) return 0;
-
+  
   return cbt_settings.busCfg[busId-1].baud;
 }
 
@@ -155,7 +155,7 @@ void Settings::firstbootSetup()
         { 0x04, 0x62, 0x05, 0xF4, 0x06, 0x23 },               /* RXF */
         { 0x30, 0x10 },                                       /* RXD */
         { 0x00, 0x1D, 0x00, 0x14, 0x00, 0x00 },               /* MTH */
-        { 0x46, 0x50, 0x52, 0x20, 0x4b, 0x20, 0x20, 0x20 }    /* NAM */
+        { 0x46, 0x50, 0x52, 0x00, 0x4b, 0x20, 0x20, 0x20 }    /* NAM */
       },
       {
         // VAR CAM TIMING
@@ -208,3 +208,5 @@ void Settings::firstbootSetup()
 
 
 }
+
+

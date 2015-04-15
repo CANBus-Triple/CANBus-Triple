@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.4.3"
+    #define BUILD_VERSION "0.4.4"
 #endif
 // #define SLEEP_ENABLE
 
@@ -37,6 +37,8 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 byte rx_status;
 QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
+
+
 
 
 /*
@@ -119,7 +121,7 @@ void setup(){
   CANBus2.begin();
   CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
   CANBus2.setRxInt(true);
-  CANBus2.bitModify(RXB0CTRL, 0x04, 0x04);
+  CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
   CANBus2.setMode(LISTEN);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
@@ -138,6 +140,9 @@ void setup(){
     digitalWrite( BOOT_LED, LOW );
     delay(50);
   }
+
+
+
 
   // wdt_enable(WDTO_1S);
 
@@ -192,10 +197,13 @@ void loop() {
   }
 
 
+
+
   // Pet the dog
   // wdt_reset();
 
 } // End loop()
+
 
 
 /*
@@ -235,6 +243,7 @@ boolean sendMessage( Message msg, CANBus bus ){
 }
 
 
+
 /*
 *  Read Can Controller Buffer
 */
@@ -270,7 +279,7 @@ void readBus( CANBus bus ){
 
 
 /*
-*  Process received CAN message through middleware
+*  Process recieved CAN message through middleware
 */
 void processMessage( Message msg ){
 
@@ -281,3 +290,7 @@ void processMessage( Message msg ){
     writeQueue.push( msg );
 
 }
+
+
+
+
