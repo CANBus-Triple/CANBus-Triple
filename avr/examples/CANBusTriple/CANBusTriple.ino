@@ -1,3 +1,6 @@
+#include <CANBus.h>
+#include <Message.h>
+
 /*
 *  CANBus Triple
 *  The Car Hacking Platform
@@ -219,15 +222,15 @@ boolean sendMessage( Message msg, CANBus bus ){
 
   switch( ch ){
     case 0:
-      bus.load_ff_0( msg.length, msg.frame_id, msg.frame_data );
+      bus.load_ff_0( msg.length, msg.frame_id, msg.frame_data, msg.ide );
       bus.send_0();
       break;
     case 1:
-      bus.load_ff_1( msg.length, msg.frame_id, msg.frame_data );
+      bus.load_ff_1( msg.length, msg.frame_id, msg.frame_data, msg.ide );
       bus.send_1();
       break;
     case 2:
-      bus.load_ff_2( msg.length, msg.frame_id, msg.frame_data );
+      bus.load_ff_2( msg.length, msg.frame_id, msg.frame_data, msg.ide );
       bus.send_2();
       break;
     default:
@@ -259,7 +262,7 @@ void readBus( CANBus bus ){
     Message msg;
     msg.busStatus = rx_status;
     msg.busId = bus.busId;
-    bus.readDATA_ff_0( &msg.length, msg.frame_data, &msg.frame_id );
+    bus.readDATA_ff_0( &msg.length, msg.frame_data, &msg.frame_id, &msg.ide );
     readQueue.push(msg);
   }
 
@@ -271,7 +274,7 @@ void readBus( CANBus bus ){
     Message msg;
     msg.busStatus = rx_status;
     msg.busId = bus.busId;
-    bus.readDATA_ff_1( &msg.length, msg.frame_data, &msg.frame_id );
+    bus.readDATA_ff_1( &msg.length, msg.frame_data, &msg.frame_id, &msg.ide );
     readQueue.push(msg);
   }
 

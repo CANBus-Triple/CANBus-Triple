@@ -146,19 +146,30 @@ CNF3=b'00000010'=0x02 = SOF = 0  & WAKFIL = 0 & PS2 = 3
 
 #define RXM0SIDH	0x20
 #define RXM0SIDL	0x21
+#define RXM0EID8	0x22
+#define RXM0EID0	0x23
 #define RXM1SIDH	0x24
 #define RXM1SIDL	0x25
+#define RXM1EID8	0x26
+#define RXM1EID0	0x27
 
 #define MERRF       0x80
 
+#define SUPPORTS_29BIT 0
 
+#ifdef SUPPORTS_29BIT
+    typedef unsigned long IDENTIFIER_INT;
+#else
+    typedef unsigned short IDENTIFIER_INT;
+#endif
 
 #include "Arduino.h"
 
 struct MessageNew {
     byte length;
-    unsigned short frame_id;
+    IDENTIFIER_INT frame_id;
     byte frame_data[8];
+    byte ide;
     unsigned int busStatus;
     unsigned int busId;
     bool dispatch;
@@ -197,7 +208,7 @@ public:
     void setClkPre(int mode);
 
     // Set RX Filter registers
-    void setFilter(int, int);
+    void setFilter(byte ide, IDENTIFIER_INT filter0, IDENTIFIER_INT filter1);
     void clearFilters();
 
     int getNextTxBuffer();
@@ -209,7 +220,7 @@ public:
     byte readRegister( int addr );
     void writeRegister( int addr, byte value );
     void writeRegister( int addr, byte value, byte value2 );
-
+    void writeRegister( int addr, byte value, byte value2, byte value3, byte value4 );
 
     // byte readTXBNCTRL(int bufferid);
 
@@ -225,8 +236,8 @@ public:
 
 	//extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
 	//data_out should be array of 8-bytes or frame length.
-	void readDATA_ff_0(byte* length_out,byte *data_out,unsigned short *id_out);
-	void readDATA_ff_1(byte* length_out,byte *data_out,unsigned short *id_out);
+	void readDATA_ff_0(byte* length_out,byte *data_out,IDENTIFIER_INT *id_out,byte *ide);
+	void readDATA_ff_1(byte* length_out,byte *data_out,IDENTIFIER_INT *id_out,byte *ide);
 
 	//Adding can to read status register(pcruce_at_igpp.ucla.edu)
 	//can be used to determine whether a frame was received.
@@ -242,10 +253,11 @@ public:
 	void load_2(byte identifier, byte data);
 
 	//extending CAN write to full frame(pcruce_at_igpp.ucla.edu)
-	//Identifier should be a value between 0 and 2^11-1, longer identifiers will be truncated(ie does not support extended frames)
-	void load_ff_0(byte length,unsigned short identifier,byte *data);
-    void load_ff_1(byte length,unsigned short identifier,byte *data);
-	void load_ff_2(byte length,unsigned short identifier,byte *data);
+	//Identifier should be a value between 0 and 2^11-1 for 11-bit messages
+    //Identifier should be a value between 0 and 2^29-1 for 29-bit messages
+	void load_ff_0(byte length,IDENTIFIER_INT identifier,byte *data,byte ide);
+    void load_ff_1(byte length,IDENTIFIER_INT identifier,byte *data,byte ide);
+	void load_ff_2(byte length,IDENTIFIER_INT identifier,byte *data,byte ide);
 
 };
 

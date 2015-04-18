@@ -7,7 +7,11 @@ struct pid {
   byte busId;
   byte settings; // unused, unused, unused, unused, unused, unused, unused, add decimal flag
   unsigned int value;
-  byte txd[8];
+  #ifdef SUPPORTS_29BIT 
+    byte txd[10];
+  #else
+    byte txd[8];
+  #endif
   byte rxf[6];
   byte rxd[2];
   byte mth[6];
