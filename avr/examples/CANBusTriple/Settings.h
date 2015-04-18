@@ -27,13 +27,13 @@ struct cbt_settings {
   byte firstboot;
   byte displayIndex;
   struct busConfig busCfg[3];
-  byte placeholder4;
   byte hwselftest;
+  byte placeholder4;
   byte placeholder5;
   byte placeholder6;
   byte placeholder7;
   struct pid pids[8];
-  byte padding[32];
+  byte padding[256];
 } cbt_settings;
 
 

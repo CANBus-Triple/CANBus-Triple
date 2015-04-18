@@ -196,7 +196,7 @@ public:
 
     void begin();                       //sets up MCP2515
     bool baudConfig(int bitRate);       //sets up baud
-    
+
     void reset();                       // Send MCP2515 Reset command
 
     void bitModify( byte reg, byte value, byte mask  );

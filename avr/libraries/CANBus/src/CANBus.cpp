@@ -13,7 +13,6 @@ Modified by Derek Kuschel for use with multiple MCP2515
 #define FREQ 16
 
 
-
 CANBus::CANBus( int ss, int reset, unsigned int bid, String nameString )
 {
     _ss = ss;
@@ -95,7 +94,7 @@ case 83:
         config1 = 0x00;
         config2 = 0x00;
         break;
-            
+
 case 100:
 		config0 = 0x04;
 		config1 = 0xB8;
@@ -154,8 +153,8 @@ case 1000:
 	delay(1);
 	digitalWrite(_ss, HIGH);
 	delay(1);
-    
-    return true;
+
+  return true;
 }
 
 
@@ -174,11 +173,11 @@ bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
     float tempBT;
 
     float NBT = 1.0 / (float)bitRate * 1000.0; // Nominal Bit Time
-    
+
     for( BRP=0; BRP<8 ;BRP++ ) {
         TQ = 2.0 * (float)(BRP + 1) / (float)FREQ;
         tempBT = NBT / TQ;
-        
+
         if(tempBT<=25) {
             BT = (int)tempBT;
             if(tempBT-BT==0) break;
@@ -191,7 +190,7 @@ bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
     byte PHSEG2 = BT - PHSEG1 - PRSEG - 1;
 
     byte SJW = 1;
-    
+
     // Programming requirements
     if(PRSEG + PHSEG1 < PHSEG2) return false;
     if(PHSEG2 <= SJW) return false;
@@ -203,7 +202,7 @@ bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
     byte config1 = (((SJW-1) << 6) | BRP);
     byte config2 = ((BTLMODE << 7) | (SAM << 6) | ((PHSEG1-1) << 3) | (PRSEG-1));
     byte config3 = (B00000000 | (PHSEG2-1));
-    
+
     digitalWrite(_ss, LOW);
     delay(1);
     SPI.transfer(WRITE);
@@ -230,7 +229,7 @@ bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
     delay(1);
     digitalWrite(_ss, HIGH);
     delay(1);
-    
+
     /*
     Serial.print("Bit rate = ");
     Serial.println(bitRate);
@@ -246,7 +245,7 @@ bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
     Serial.println(PHSEG1);
     Serial.print("Phase 2 = ");
     Serial.println(PHSEG2);
-    
+
     Serial.print("CNT1 ");
     Serial.println(config1, BIN);
     Serial.print("CNT2 ");
@@ -254,13 +253,11 @@ bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
     Serial.print("CNT3 ");
     Serial.println(config3, BIN);
     */
-    
+
     return true;
- 
+
 }
 #endif
-
-
 
 
 void CANBus::bitModify( byte reg, byte value, byte mask  ){
@@ -349,17 +346,15 @@ void CANBus::setFilter( byte ide, IDENTIFIER_INT filter0, IDENTIFIER_INT filter1
         // RXB0
         byte SIDH = filter0 >> 3;
         byte SIDL = filter0 << 5;
-        this->writeRegister(RXF0SIDH, SIDH, SIDL );
-        this->writeRegister(RXF2SIDH, SIDH, SIDL );
-
-        // RXB1
+        this->writeRegister(RXF0SIDH, SIDH, SIDL ); // RXB0
+        this->writeRegister(RXF2SIDH, SIDH, SIDL ); // RXB1
+    
         SIDH = filter1 >> 3;
         SIDL = filter1 << 5;
-
-        this->writeRegister(RXF1SIDH, SIDH, SIDL );
-        this->writeRegister(RXF3SIDH, SIDH, SIDL );
-        this->writeRegister(RXF4SIDH, SIDH, SIDL );
-        this->writeRegister(RXF5SIDH, SIDH, SIDL );
+        this->writeRegister(RXF1SIDH, SIDH, SIDL ); // RXB0
+        this->writeRegister(RXF3SIDH, SIDH, SIDL ); // RXB1
+        this->writeRegister(RXF4SIDH, SIDH, SIDL ); // RXB1
+        this->writeRegister(RXF5SIDH, SIDH, SIDL ); // RXB1
 
         // Set mask to match everything
         /*
@@ -369,7 +364,7 @@ void CANBus::setFilter( byte ide, IDENTIFIER_INT filter0, IDENTIFIER_INT filter1
         */
         //SIDH = 0xFF >> 3;
         //SIDL = 0xFF << 5;
-        //Fix?
+        //Better syntax?
         SIDH = 0xFFFF >> 3;
         SIDL = 0xFFFF << 5;
         this->writeRegister(RXM0SIDH, SIDH, SIDL );
@@ -379,15 +374,11 @@ void CANBus::setFilter( byte ide, IDENTIFIER_INT filter0, IDENTIFIER_INT filter1
         
 }
 
+
 void CANBus::clearFilters(){
     this->writeRegister(RXM0SIDH, 0, 0, 0, 0 );
     this->writeRegister(RXM1SIDH, 0, 0, 0, 0 );
 }
-
-
-
-
-
 
 
 // Enable / Disable interrupt pin on message Rx
@@ -466,7 +457,6 @@ void CANBus::setClkPre(int mode){
 }
 
 
-
 //Method added to enable testing in loopback mode.(pcruce_at_igpp.ucla.edu)
 void CANBus::setMode(CANMode mode) { //put CAN controller in one of five modes
 
@@ -514,6 +504,7 @@ void CANBus::send_0()//transmits buffer 0
 	digitalWrite(_ss, HIGH);
 }
 
+
 void CANBus::send_1()//transmits buffer 1
 {
 	digitalWrite(_ss, LOW);
@@ -521,12 +512,14 @@ void CANBus::send_1()//transmits buffer 1
 	digitalWrite(_ss, HIGH);
 }
 
+
 void CANBus::send_2()//transmits buffer 2
 {
 	digitalWrite(_ss, LOW);
 	SPI.transfer(SEND_TX_BUF_2);
 	digitalWrite(_ss, HIGH);
 }
+
 
 char CANBus::readID_0()//reads ID in recieve buffer 0
 {
@@ -541,6 +534,7 @@ char CANBus::readID_0()//reads ID in recieve buffer 0
 	return retVal;
 }
 
+
 char CANBus::readID_1()//reads ID in reciever buffer 1
 {
 	char retVal;
@@ -553,6 +547,7 @@ char CANBus::readID_1()//reads ID in reciever buffer 1
 	delay(1);
 	return retVal;
 }
+
 
 char CANBus::readDATA_0()//reads DATA in recieve buffer 0
 {
@@ -580,9 +575,9 @@ char CANBus::readDATA_1()//reads data in recieve buffer 1
 	return retVal;
 }
 
-	//extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
-	//It is the responsibility of the user to allocate memory for output.
-	//If you don't know what length the bus frames will be, data_out should be 8-bytes
+//extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
+//It is the responsibility of the user to allocate memory for output.
+//If you don't know what length the bus frames will be, data_out should be 8-bytes
 void CANBus::readDATA_ff_0(byte* length_out,byte *data_out,
     IDENTIFIER_INT *id_out,byte *ide){
 
@@ -621,6 +616,7 @@ void CANBus::readDATA_ff_0(byte* length_out,byte *data_out,
     #endif
 
 }
+
 
 void CANBus::readDATA_ff_1(byte* length_out,byte *data_out,
     IDENTIFIER_INT *id_out,byte *ide){
@@ -662,7 +658,6 @@ void CANBus::readDATA_ff_1(byte* length_out,byte *data_out,
 }
 
 
-
 byte CANBus::readStatus()
 {
 	byte retVal;
@@ -697,6 +692,7 @@ void CANBus::writeRegister( int addr, byte value )
 	digitalWrite(_ss, HIGH);
 	delay(1);
 }
+
 
 void CANBus::writeRegister( int addr, byte value, byte value2 )
 {
@@ -799,6 +795,7 @@ void CANBus::load_0(byte identifier, byte data)//loads ID and DATA into transmit
 	delay(1);
 }
 
+
 void CANBus::load_1(byte identifier, byte data)//loads ID and DATA into transmit buffer 1
 {
 	digitalWrite(_ss, LOW);
@@ -818,6 +815,7 @@ void CANBus::load_1(byte identifier, byte data)//loads ID and DATA into transmit
 	delay(1);
 }
 
+
 void CANBus::load_2(byte identifier, byte data)//loads ID and DATA into transmit buffer 2
 {
 	digitalWrite(_ss, LOW);
@@ -836,6 +834,7 @@ void CANBus::load_2(byte identifier, byte data)//loads ID and DATA into transmit
 	digitalWrite(_ss, HIGH);
 	delay(1);
 }
+
 
 void CANBus::load_ff_0(byte length,IDENTIFIER_INT identifier,byte *data,byte ide)
 {
@@ -879,6 +878,7 @@ void CANBus::load_ff_0(byte length,IDENTIFIER_INT identifier,byte *data,byte ide
 
 }
 
+
 void CANBus::load_ff_1(byte length,IDENTIFIER_INT identifier,byte *data,byte ide)
 {
 
@@ -920,6 +920,7 @@ void CANBus::load_ff_1(byte length,IDENTIFIER_INT identifier,byte *data,byte ide
 	digitalWrite(_ss, HIGH);
 
 }
+
 
 void CANBus::load_ff_2(byte length,IDENTIFIER_INT identifier,byte *data,byte ide)
 {
