@@ -1,8 +1,8 @@
 /*
 *  CANBus Triple
 *  The Car Hacking Platform
-*  https://canb.us
-*  https://github.com/CANBus-Triple
+*  http://canb.us
+*  https://github.com/etx/CANBus-Triple
 */
 
 #include <avr/wdt.h>
@@ -12,11 +12,11 @@
 #include <Message.h>
 #include <QueueArray.h>
 
-#define BUILDNAME "CANBus Triple Mazda"
+#define BUILDNAME "CANBus Triple"
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.4.3"
+    #define BUILD_VERSION "0.4.2"
 #endif
 // #define SLEEP_ENABLE
 
@@ -42,6 +42,8 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 byte rx_status;
 QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
+
+
 
 
 /*
@@ -126,7 +128,7 @@ void setup(){
   CANBus2.begin();
   CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
   CANBus2.setRxInt(true);
-  CANBus2.bitModify(RXB0CTRL, 0x04, 0x04);
+  CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
   CANBus2.setMode(LISTEN);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
@@ -144,7 +146,7 @@ void setup(){
   CANBus2.setMode(CONFIGURATION);
   CANBus2.setFilter( serviceCall->filterPids[0], serviceCall->filterPids[1] );
   CANBus2.setMode(NORMAL);
-
+  
 
   for (int b = 0; b<5; b++) {
     digitalWrite( BOOT_LED, HIGH );
@@ -152,6 +154,12 @@ void setup(){
     digitalWrite( BOOT_LED, LOW );
     delay(50);
   }
+
+
+ 
+
+
+
 
 
   // wdt_enable(WDTO_1S);
@@ -171,7 +179,7 @@ void handleInterrupt3(){
 
 
 /*
-*  Main Loop
+*  TODO, Comment on this method
 */
 void loop() {
 
@@ -207,14 +215,17 @@ void loop() {
   }
 
 
+
+
   // Pet the dog
   // wdt_reset();
 
 } // End loop()
 
 
+
 /*
-*  Load CAN Controller buffer and set send flag
+*  TODO, Comment on this method
 */
 boolean sendMessage( Message msg, CANBus bus ){
 
@@ -250,8 +261,9 @@ boolean sendMessage( Message msg, CANBus bus ){
 }
 
 
+
 /*
-*  Read Can Controller Buffer
+*  TODO, Comment on this method
 */
 void readBus( CANBus bus ){
 
@@ -285,7 +297,7 @@ void readBus( CANBus bus ){
 
 
 /*
-*  Process received CAN message through middleware
+*  TODO, Comment on this method
 */
 void processMessage( Message msg ){
 
@@ -300,3 +312,6 @@ void processMessage( Message msg ){
     writeQueue.push( msg );
 
 }
+
+
+

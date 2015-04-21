@@ -20,22 +20,29 @@ System Info and EEPROM
 
 Send CAN Packet
 ---------------
-Cmd    Bus id  PID    data 0-7                  length
-0x02   01      290    00 00 00 00 00 00 00 00   8
+Cmd    Bus id  IDE    PID           data 0-7                  length   
+0x02   0x01           0x0290        00 00 00 00 00 00 00 00   8                    (11-bit, SUPPORTS_29BIT false)
+0x02   0x01    0x00   0x00000290    00 00 00 00 00 00 00 00   8                    (11-bit, SUPPORTS_29BIT true)
+0x02   0x01    0x08   0x1FFFFFFF    00 00 00 00 00 00 00 00   8                    (29-bit, SUPPORTS_29BIT true)
 
 
 Set logging output (Filters are optional)
 --------------------------------------------------
-Cmd  Bus  On/Off Message ID 1   Message ID 2
-0x03 0x01 0x01   0x290          0x291   // Set logging on Bus 1 to ON
-0x03 0x01 0x00                          // Set logging on Bus 1 to OFF
+Cmd  Bus  On/Off IDE   Message ID 1   Message ID 2  
+0x03 0x01 0x01         0x0290         0x0291      // Set logging on Bus 1 to ON    (11-bit, SUPPORTS_29BIT false)
+0x03 0x01 0x01   0x00  0x00000290     0x00000291  // Set logging on Bus 1 to ON    (11-bit, SUPPORTS_29BIT true)
+0x03 0x01 0x01   0x08  0x1FFFFFFE     0x1FFFFFFF  // Set logging on Bus 1 to ON    (29-bit, SUPPORTS_29BIT true)
+0x03 0x01 0x00                                    // Set logging on Bus 1 to OFF
 
 
 Set Bluetooth Message ID filter
 ----------------------------------------
-Cmd  Bus  Message ID 1 Message ID 2
-0x04 0x01 0x290        0x291          // Enable Message ID 290 output over BT
-0x04 0x01 0x0000       0x0000         // Disable
+Cmd  Bus  IDE  Message ID 1 Message ID 2 
+0x04 0x01      0x0290       0x0291         // Enable Message ID 290 output over BT (11-bit, SUPPORTS_29BIT false)
+0x04 0x01      0x0000       0x0000         // Disable                              (11-bit, SUPPORTS_29BIT false)
+0x04 0x01 0x00 0x00000290   0x00000291     // Enable Message ID 290 output over BT (11-bit, SUPPORTS_29BIT true)
+0x04 0x01 0x08 0x1FFFFFFE   0x1FFFFFFF     // Enable Message ID XXX output over BT (29-bit, SUPPORTS_29BIT true)
+0x04 0x01 0x00 0x00000000   0x00000000     // Disable                              (29-bit, SUPPORTS_29BIT true)
 
 
 Bluetooth Functions
@@ -60,8 +67,8 @@ TODO: Implement this ^^^
 #define MAX_MW_CALLBACKS 8
 #define BT_SEND_DELAY 20
 
-
 #include "Middleware.h"
+#include <CANBus.h>
 
 
 struct middleware_command {
@@ -99,7 +106,7 @@ class SerialCommand : public Middleware
     void logCommand();
     void bluetooth();
     void setBluetoothFilter();
-    char btMessageIdFilters[][2];
+    IDENTIFIER_INT btMessageIdFilters[][2];
     boolean passthroughMode;
     byte busLogEnabled;
     Message newMessage;
@@ -214,8 +221,16 @@ void SerialCommand::printMessageToSerial( Message msg )
 
     activeSerial->write( 0x03 ); // Prefix with logging command
     activeSerial->write( msg.busId );
-    activeSerial->write( msg.frame_id >> 8 );
-    activeSerial->write( msg.frame_id );
+
+    #ifdef SUPPORTS_29BIT
+        activeSerial->write( msg.frame_id >> 24 );
+        activeSerial->write( msg.frame_id >> 16 );
+        activeSerial->write( msg.frame_id >> 8 );
+        activeSerial->write( msg.frame_id );
+    #else
+        activeSerial->write( msg.frame_id >> 8 );
+        activeSerial->write( msg.frame_id );
+    #endif
 
     for (int i=0; i<8; i++)
       activeSerial->write(msg.frame_data[i]);
@@ -319,13 +334,23 @@ void SerialCommand::settingsCall()
 
 void SerialCommand::setBluetoothFilter(){
 
-  byte cmd[5];
-  int bytesRead = getCommandBody( cmd, 5 );
-
-  if( cmd[0] >= 0 && cmd[0] <= 3 ){
-    btMessageIdFilters[cmd[0]][0] = (cmd[1] << 8)+cmd[2];
-    btMessageIdFilters[cmd[0]][1] = (cmd[3] << 8)+cmd[4];
-  }
+  #ifdef SUPPORTS_29BIT
+    byte cmd[10];
+    int bytesRead = getCommandBody( cmd, 10 );
+  
+    if( cmd[0] >= 0 && cmd[0] <= 3 ){
+      btMessageIdFilters[cmd[0]][0] = (cmd[2] << 24) + (cmd[3] << 16) + (cmd[4] << 8) + cmd[5];
+      btMessageIdFilters[cmd[0]][1] = (cmd[6] << 24) + (cmd[7] << 16) + (cmd[8] << 8) + cmd[9];
+    }
+  #else
+    byte cmd[5];
+    int bytesRead = getCommandBody( cmd, 5 );
+  
+    if( cmd[0] >= 0 && cmd[0] <= 3 ){
+      btMessageIdFilters[cmd[0]][0] = (cmd[1] << 8)+cmd[2];
+      btMessageIdFilters[cmd[0]][1] = (cmd[3] << 8)+cmd[4];
+    }
+  #endif
 
 }
 
@@ -352,9 +377,14 @@ void SerialCommand::bitRate(){
 
 void SerialCommand::logCommand()
 {
-  byte cmd[6] = {0};
-  int bytesRead = getCommandBody( cmd, 6 );
-
+  #ifdef SUPPORTS_29BIT
+    byte cmd[11] = {0};
+    int bytesRead = getCommandBody( cmd, 11 );
+  #else
+    byte cmd[6] = {0};
+    int bytesRead = getCommandBody( cmd, 6 );
+  #endif    
+ 
   if( cmd[0] < 1 || cmd[0] > 3 ){
     activeSerial->write(COMMAND_ERROR);
     return;
@@ -371,8 +401,13 @@ void SerialCommand::logCommand()
 
     bus.setMode(CONFIGURATION);
     bus.clearFilters();
-    if( cmd[2] + cmd[3] + cmd[4] + cmd[5] )
-      bus.setFilter( (cmd[2]<<8) + cmd[3], (cmd[4]<<8) + cmd[5] );
+    #ifdef SUPPORTS_29BIT
+      if( cmd[2] + cmd[3] + cmd[4] + cmd[5] + cmd[6] + cmd[7] + cmd[8] + cmd[9] + cmd[10] + cmd[11])
+        bus.setFilter( cmd[2], (cmd[3] << 24) + (cmd[4] << 16) + (cmd[5] << 8) + cmd[6], (cmd[7] << 24) + (cmd[8] << 16) + (cmd[9] << 8) + cmd[10] );
+    #else
+      if( cmd[2] + cmd[3] + cmd[4] + cmd[5] )
+        bus.setFilter( 0x00, (cmd[2]<<8) + cmd[3], (cmd[4]<<8) + cmd[5] );
+    #endif
     bus.setMode(NORMAL);
 
   }
@@ -418,22 +453,40 @@ void SerialCommand::getAndSaveEeprom()
 void SerialCommand::getAndSend()
 {
 
-  byte cmd[12];
-  int bytesRead = getCommandBody( cmd, 12 );
-
-  Message msg;
-  msg.busId = cmd[0];
-  msg.frame_id = (cmd[1]<<8) + cmd[2];
-  msg.frame_data[0] = cmd[3];
-  msg.frame_data[1] = cmd[4];
-  msg.frame_data[2] = cmd[5];
-  msg.frame_data[3] = cmd[6];
-  msg.frame_data[4] = cmd[7];
-  msg.frame_data[5] = cmd[8];
-  msg.frame_data[6] = cmd[9];
-  msg.frame_data[7] = cmd[10];
-  msg.length = cmd[11];
-  msg.dispatch = true;
+  #ifdef SUPPORTS_29BIT
+    byte cmd[15];
+    int bytesRead = getCommandBody( cmd, 15 );
+    Message msg;    
+    msg.busId = cmd[0];
+    msg.ide = cmd[1];   
+    msg.frame_id = (cmd[2] << 24) + (cmd[3] << 16) + (cmd[4] << 8) + cmd[5];
+    msg.frame_data[0] = cmd[6];
+    msg.frame_data[1] = cmd[7];
+    msg.frame_data[2] = cmd[8];
+    msg.frame_data[3] = cmd[9];
+    msg.frame_data[4] = cmd[10];
+    msg.frame_data[5] = cmd[11];
+    msg.frame_data[6] = cmd[12];
+    msg.frame_data[7] = cmd[13];
+    msg.length = cmd[14];
+    msg.dispatch = true;
+  #else
+    byte cmd[12];
+    int bytesRead = getCommandBody( cmd, 12 );
+    Message msg;
+    msg.busId = cmd[0];        
+    msg.frame_id = (cmd[1]<<8) + cmd[2];
+    msg.frame_data[0] = cmd[3];
+    msg.frame_data[1] = cmd[4];
+    msg.frame_data[2] = cmd[5];
+    msg.frame_data[3] = cmd[6];
+    msg.frame_data[4] = cmd[7];
+    msg.frame_data[5] = cmd[8];
+    msg.frame_data[6] = cmd[9];
+    msg.frame_data[7] = cmd[10];
+    msg.length = cmd[11];
+    msg.dispatch = true;
+  #endif
 
   mainQueue->push( msg );
 
