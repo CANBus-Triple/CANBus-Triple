@@ -44,7 +44,7 @@ int AutoBaud::baudDetect(byte busId, Stream* activeSerial){
   int rateFound = 0;
   for( int rateIndex = 0; rateIndex < 9; rateIndex++ ){
     
-    activeSerial->print(F("{'e':'autobaudTest', 'rate':"));
+    activeSerial->print(F("{\"event\":\"autobaudTest\", \"rate\":"));
     activeSerial->print(rates[rateIndex]);
     activeSerial->println("}");
     
@@ -83,7 +83,7 @@ int AutoBaud::baudDetect(byte busId, Stream* activeSerial){
   delay(1);
   channel.setMode(NORMAL);
   
-  activeSerial->print(F("{'e':'autobaudComplete', 'rate':"));
+  activeSerial->print(F("{\"event\":\"autobaudComplete\", \"rate\":"));
   activeSerial->print(rateFound);
   activeSerial->println("}");
   

@@ -13,8 +13,8 @@ System Info and EEPROM
 0x01 0x08 0x03   Auto baud bus 3
 0x01 0x09 0x01 N Set baud rate on bus 1 to N (N is 16 bits)
 0x01 0x10 0x01   Print Bus 1 Debug to Serial
-0x01 0x10 0x02   Print Bus 1 Debug to Serial
-0x01 0x10 0x03   Print Bus 1 Debug to Serial
+0x01 0x10 0x02   Print Bus 2 Debug to Serial
+0x01 0x10 0x03   Print Bus 3 Debug to Serial
 0x01 0x16        Reboot to bootloader
 
 
@@ -114,11 +114,14 @@ class SerialCommand : public Middleware
     void printEFLG(CANBus);
     int byteCount;
     void btDelay();
+    bool btRateLimit();
+    unsigned long lastBluetoothRX;
 };
 
 
 byte mwCommandIndex = 0;
 int byteCount = 0;
+unsigned long lastBluetoothRX = millis();
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
@@ -213,12 +216,8 @@ void SerialCommand::printMessageToSerial( Message msg )
 
   #else
 
-    // Bluetooth filter
-    // TODO TEST
-    if( activeSerial == &Serial1 &&
-        btMessageIdFilters[msg.busId][0] != msg.frame_id &&
-        btMessageIdFilters[msg.busId][1] != msg.frame_id
-        ) return;
+    // Bluetooth rate limiting
+    if( activeSerial == &Serial1 && btRateLimit() ) return;
 
     activeSerial->write( 0x03 ); // Prefix with logging command
     activeSerial->write( msg.busId );
@@ -367,9 +366,9 @@ void SerialCommand::bitRate(){
   if(bytesRead == 3)
     Settings::setBaudRate( cmd[0], (cmd[1] << 8) + cmd[2] );
   
-  activeSerial->print( F( "{\"event\":\"bitrate\", \"bus\":" ) );
+  activeSerial->print( F( "{\"event\":\"bitrate-bus" ) );
   activeSerial->print(cmd[0]);
-  activeSerial->print( F( ", \"rate\":" ) );
+  activeSerial->print( F( "\", \"rate\":" ) );
   activeSerial->print( Settings::getBaudRate( cmd[0] ), DEC );
   activeSerial->println( F( "}" ) ); 
 }
@@ -560,27 +559,27 @@ void SerialCommand::printSystemDebug()
 void SerialCommand::printChannelDebug(){
   byte cmd[1];
   getCommandBody( cmd, 1 );
-  if( cmd[0] > -1 && cmd[0] <= 3 )
+  if( cmd[0] > 0 && cmd[0] <= 3 )
      printChannelDebug( busses[cmd[0]-1] );
 }
 
 void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b00000001)      //EWARN
-    activeSerial->print( F("Receive Error Warning - TEC or REC >= 96") );
+    activeSerial->print( F("Receive Error Warning - TEC or REC >= 96, ") );
   if (channel.readRegister(EFLG) & 0b00000010)      //RXWAR
-    activeSerial->print( F("Receive Error Warning - REC >= 96") );
+    activeSerial->print( F("Receive Error Warning - REC >= 9, ") );
   if (channel.readRegister(EFLG) & 0b00000100)      //TXWAR
-    activeSerial->print( F("Transmit Error Warning - TEX >= 96") );
+    activeSerial->print( F("Transmit Error Warning - TEX >= 96, ") );
   if (channel.readRegister(EFLG) & 0b00001000)      //RXEP
-    activeSerial->print( F("Receive Error Warning - REC >= 128") );
+    activeSerial->print( F("Receive Error Warning - REC >= 128, ") );
   if (channel.readRegister(EFLG) & 0b00010000)      //TXEP
-    activeSerial->print( F("Transmit Error Warning - TEC >= 128") );
+    activeSerial->print( F("Transmit Error Warning - TEC >= 128, ") );
   if (channel.readRegister(EFLG) & 0b00100000)      //TXBO
-    activeSerial->print( F("Bus Off - TEC exceeded 255") );
+    activeSerial->print( F("Bus Off - TEC exceeded 255, ") );
   if (channel.readRegister(EFLG) & 0b01000000)      //RX0OVR
-    activeSerial->print( F("Receive Buffer 0 Overflow") );
+    activeSerial->print( F("Receive Buffer 0 Overflow, ") );
   if (channel.readRegister(EFLG) & 0b10000000)      //RX1OVR
-    activeSerial->print( F("Receive Buffer 1 Overflow") );
+    activeSerial->print( F("Receive Buffer 1 Overflow, ") );
   if (channel.readRegister(EFLG) ==0)                  //No errors
     activeSerial->print( F("No Errors") ); 
 }
@@ -664,6 +663,18 @@ void SerialCommand::btDelay(){
   }
   
 }
+
+
+bool SerialCommand::btRateLimit(){
+  
+  if( lastBluetoothRX + 30 < millis() ){
+    lastBluetoothRX = millis();
+    return false;
+  }else
+     return true;
+  
+}
+
 
 int SerialCommand::freeRam (){
   extern int __heap_start, *__brkval;
