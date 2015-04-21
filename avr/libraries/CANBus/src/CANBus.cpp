@@ -282,38 +282,98 @@ int CANBus::getNextTxBuffer(){
 
 }
 
+void CANBus::setFilter( byte ide, IDENTIFIER_INT filter0, IDENTIFIER_INT filter1 ){
 
-void CANBus::setFilter( int filter0, int filter1 ){
+     #ifdef SUPPORTS_29BIT
+
+        byte byte1, byte2, byte3, byte4 = 0x00;
+        byte SIDH, SIDL, EID8, EID0;
     
-    byte SIDH = filter0 >> 3;
-    byte SIDL = filter0 << 5;
-    this->writeRegister(RXF0SIDH, SIDH, SIDL ); // RXB0
-    this->writeRegister(RXF2SIDH, SIDH, SIDL ); // RXB1
+        // RXB0
+        if (ide) {
+            byte1 = byte ((filter0 << 3) >> 24); // 8 MSBits of SID
+            byte2 = byte ((filter0 << 11) >> 24) & 0xE0; // 3 LSBits of SID
+            byte2 = byte2 | byte ((filter0 << 14) >> 30); // 2 MSBits of EID
+            byte2 = byte2 | 0x08; // EXIDE
+            byte3 = byte ((filter0 << 16) >> 24); // EID Bits 15-8
+            byte4 = byte ((filter0 << 24) >> 24); // EID Bits 7-0
+        } else {
+            byte1 = byte ((filter0 << 21) >> 24); // 8 MSBits of SID
+            byte2 = byte ((filter0 << 29) >> 24) & 0xE0; // 3 LSBits of SID
+            byte3 = 0; // TXBnEID8
+            byte4 = 0; // TXBnEID0
+        }
+        this->writeRegister(RXF0SIDH, byte1, byte2, byte3, byte4 );
+        //this->writeRegister(RXF2SIDH, byte1, byte2, byte3, byte4 );
+        
+        // RXB1
+        if (ide) {
+            byte1 = byte ((filter1 << 3) >> 24); // 8 MSBits of SID
+            byte2 = byte ((filter1 << 11) >> 24) & 0xE0; // 3 LSBits of SID
+            byte2 = byte2 | byte ((filter1 << 14) >> 30); // 2 MSBits of EID
+            byte2 = byte2 | 0x08; // EXIDE
+            byte3 = byte ((filter1 << 16) >> 24); // EID Bits 15-8
+            byte4 = byte ((filter1 << 24) >> 24); // EID Bits 7-0
+        } else {
+            byte1 = byte ((filter1 << 21) >> 24); // 8 MSBits of SID
+            byte2 = byte ((filter1 << 29) >> 24) & 0xE0; // 3 LSBits of SID
+            byte3 = 0; // TXBnEID8
+            byte4 = 0; // TXBnEID0
+        }
+        this->writeRegister(RXF1SIDH, byte1, byte2, byte3, byte4 );
+        //this->writeRegister(RXF3SIDH, byte1, byte2, byte3, byte4 );
+        //this->writeRegister(RXF4SIDH, byte1, byte2, byte3, byte4 );
+        //this->writeRegister(RXF5SIDH, byte1, byte2, byte3, byte4 );
+    
+        // Set mask to match everything
+        if (ide) {
+            SIDH = byte ((0xFFFFFFFF << 3) >> 24);
+            SIDL = byte ((0xFFFFFFFF << 11) >> 24) & 0xE0;
+            SIDL = SIDL | byte ((0xFFFFFFFF << 14) >> 30);
+            EID8 = 0xFF;
+            EID0 = 0xFF;
+        } else  {
+            SIDH = byte ((0xFFFFFFFF << 21) >> 24);
+            SIDL = byte ((0xFFFFFFFF << 29) >> 24) & 0xE0;
+            EID8 = 0x00;
+            EID0 = 0x00;
+        }
+        this->writeRegister(RXM0SIDH, SIDH, SIDL, EID8, EID0);
+        this->writeRegister(RXM1SIDH, SIDH, SIDL, EID8, EID0);
+    
+    #else
+    
+        byte SIDH = filter0 >> 3;
+        byte SIDL = filter0 << 5;
+        this->writeRegister(RXF0SIDH, SIDH, SIDL ); // RXB0
+        this->writeRegister(RXF2SIDH, SIDH, SIDL ); // RXB1
 
-    SIDH = filter1 >> 3;
-    SIDL = filter1 << 5;
-    this->writeRegister(RXF1SIDH, SIDH, SIDL ); // RXB0
-    this->writeRegister(RXF3SIDH, SIDH, SIDL ); // RXB1
-    this->writeRegister(RXF4SIDH, SIDH, SIDL ); // RXB1
-    this->writeRegister(RXF5SIDH, SIDH, SIDL ); // RXB1
+        SIDH = filter1 >> 3;
+        SIDL = filter1 << 5;
+        this->writeRegister(RXF1SIDH, SIDH, SIDL ); // RXB0
+        this->writeRegister(RXF3SIDH, SIDH, SIDL ); // RXB1
+        this->writeRegister(RXF4SIDH, SIDH, SIDL ); // RXB1
+        this->writeRegister(RXF5SIDH, SIDH, SIDL ); // RXB1
 
-    // Set mask to match everything
-    /*
-    int combined = filter0 | filter1;
-    SIDH = combined >> 3;
-    SIDL = combined << 5;
-    */
-    SIDH = 0xFF >> 3;
-    SIDL = 0xFF << 5;
-    this->writeRegister(RXM0SIDH, SIDH, SIDL );
-    this->writeRegister(RXM1SIDH, SIDH, SIDL );
+        // Set mask to match everything
+        /*
+        int combined = filter0 | filter1;
+        SIDH = combined >> 3;
+        SIDL = combined << 5;
+        */
+        SIDH = 0xFF >> 3;
+        SIDL = 0xFF << 5;
+        this->writeRegister(RXM0SIDH, SIDH, SIDL );
+        this->writeRegister(RXM1SIDH, SIDH, SIDL );
+
+    #endif
 
 }
 
 
 void CANBus::clearFilters(){
-    this->writeRegister(RXM0SIDH, 0, 0 );
-    this->writeRegister(RXM1SIDH, 0, 0 );
+    this->writeRegister(RXM0SIDH, 0, 0, 0, 0 );
+    this->writeRegister(RXM1SIDH, 0, 0, 0, 0 );
 }
 
 
@@ -511,50 +571,85 @@ char CANBus::readDATA_1()//reads data in recieve buffer 1
 	return retVal;
 }
 
-
 //extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
 //It is the responsibility of the user to allocate memory for output.
 //If you don't know what length the bus frames will be, data_out should be 8-bytes
-void CANBus::readDATA_ff_0(byte* length_out,byte *data_out,unsigned short *id_out){
+void CANBus::readDATA_ff_0(byte* length_out,byte *data_out,
+    IDENTIFIER_INT *id_out,byte *ide){
 
-	byte len,i;
-	unsigned short id_h,id_l;
+	byte i, len, byte1, byte2, byte3, byte4;
 
 	digitalWrite(_ss, LOW);
 	SPI.transfer(READ_RX_BUF_0_ID);
-	id_h = (unsigned short) SPI.transfer(0xFF); //id high
-	id_l = (unsigned short) SPI.transfer(0xFF); //id low
-	SPI.transfer(0xFF); //extended id high(unused)
-	SPI.transfer(0xFF); //extended id low(unused)
+	byte1 = SPI.transfer(0xFF); //id high
+	byte2 = SPI.transfer(0xFF); //id low
+    byte3 = SPI.transfer(0xFF); //extended id high
+    byte4 = SPI.transfer(0xFF); //extended id low
 	len = (SPI.transfer(0xFF) & 0x0F); //data length code
 	for (i = 0;i<len;i++) {
 		data_out[i] = SPI.transfer(0xFF);
 	}
 	digitalWrite(_ss, HIGH);
+
 	(*length_out) = len;
-	(*id_out) = ((id_h << 3) + ((id_l & 0xE0) >> 5)); //repack identifier
+    //repack identifier
+    #ifdef SUPPORTS_29BIT
+        IDENTIFIER_INT id;
+        (*ide) = (byte2 & 0x08);
+        if (*ide) {
+            // 29-bit message
+            id = (byte1 >> 3);
+            id = (id << 8) | ((byte1 << 5) | ((byte2 >> 5) << 2) | (byte2 & 0x03));
+            id = (id << 8) | byte3;
+            id = (id << 8) | byte4;
+            (*id_out) = id;
+        } else {
+            // 11-bit message
+            (*id_out) = ((byte1 >> 5) << 8) | ((byte1 << 3) | (byte2 >> 5));
+        }
+    #else
+        (*id_out) = ((byte1 >> 5) << 8) | ((byte1 << 3) | (byte2 >> 5));
+    #endif
 
 }
 
+void CANBus::readDATA_ff_1(byte* length_out,byte *data_out,
+    IDENTIFIER_INT *id_out,byte *ide){
 
-void CANBus::readDATA_ff_1(byte* length_out,byte *data_out,unsigned short *id_out){
-
-	byte id_h,id_l,len,i;
+	byte i, len, byte1, byte2, byte3, byte4;
 
 	digitalWrite(_ss, LOW);
 	SPI.transfer(READ_RX_BUF_1_ID);
-	id_h = SPI.transfer(0xFF); //id high
-	id_l = SPI.transfer(0xFF); //id low
-	SPI.transfer(0xFF); //extended id high(unused)
-	SPI.transfer(0xFF); //extended id low(unused)
+	byte1 = SPI.transfer(0xFF); //id high
+	byte2 = SPI.transfer(0xFF); //id low
+    byte3 = SPI.transfer(0xFF); //extended id high
+    byte4 = SPI.transfer(0xFF); //extended id low
 	len = (SPI.transfer(0xFF) & 0x0F); //data length code
 	for (i = 0;i<len;i++) {
 		data_out[i] = SPI.transfer(0xFF);
 	}
 	digitalWrite(_ss, HIGH);
-
+    
 	(*length_out) = len;
-	(*id_out) = ((((unsigned short) id_h) << 3) + ((id_l & 0xE0) >> 5)); //repack identifier
+    //repack identifier
+    #ifdef SUPPORTS_29BIT
+        IDENTIFIER_INT id;
+        (*ide) = (byte2 & 0x08);
+        if (*ide) {
+            // 29-bit message
+            id = (byte1 >> 3);
+            id = (id << 8) | ((byte1 << 5) | ((byte2 >> 5) << 2) | (byte2 & 0x03));
+            id = (id << 8) | byte3;
+            id = (id << 8) | byte4;
+            (*id_out) = id;
+        } else {
+            // 11-bit message
+            (*id_out) = ((byte1 >> 5) << 8) | ((byte1 << 3) | (byte2 >> 5));
+        }
+    #else
+        (*id_out) = ((byte1 >> 5) << 8) | ((byte1 << 3) | (byte2 >> 5));
+    #endif
+
 }
 
 
@@ -607,6 +702,20 @@ void CANBus::writeRegister( int addr, byte value, byte value2 )
 	delay(1);
 }
 
+void CANBus::writeRegister( int addr, byte value, byte value2, byte value3, byte value4 )
+{
+    digitalWrite(_ss, LOW);
+	delay(1);
+	SPI.transfer(WRITE);
+	SPI.transfer(addr);
+	SPI.transfer(value);
+    SPI.transfer(value2);
+    SPI.transfer(value3);
+    SPI.transfer(value4);
+	delay(1);
+	digitalWrite(_ss, HIGH);
+	delay(1);
+}
 
 /*
 byte CANBus::readControl()
@@ -721,22 +830,39 @@ void CANBus::load_2(byte identifier, byte data)//loads ID and DATA into transmit
 	delay(1);
 }
 
-
-void CANBus::load_ff_0(byte length,unsigned short identifier,byte *data)
+void CANBus::load_ff_0(byte length,IDENTIFIER_INT identifier,byte *data,byte ide)
 {
 
-	byte i,id_high,id_low;
+    byte i, byte1, byte2, byte3, byte4 = 0;
 
 	//generate id bytes before SPI write
-	id_high = (byte) (identifier >> 3);
-	id_low = (byte) ((identifier << 5) & 0x00E0);
+     #ifdef SUPPORTS_29BIT
+        if (ide) {
+            byte1 = byte ((identifier << 3) >> 24); // 8 MSBits of SID
+            byte2 = byte ((identifier << 11) >> 24) & 0xE0; // 3 LSBits of SID
+            byte2 = byte2 | byte ((identifier << 14) >> 30); // 2 MSBits of EID
+            byte2 = byte2 | 0x08; // EXIDE
+            byte3 = byte ((identifier << 16) >> 24); // EID Bits 15-8
+            byte4 = byte ((identifier << 24) >> 24); // EID Bits 7-0
+        } else {
+            byte1 = byte ((identifier << 21) >> 24); // 8 MSBits of SID
+            byte2 = byte ((identifier << 29) >> 24) & 0xE0; // 3 LSBits of SID
+            byte3 = 0; // TXBnEID8
+            byte4 = 0; // TXBnEID0
+        }
+    #else
+        byte1 = (byte) (identifier >> 3);
+        byte2 = (byte) ((identifier << 5) & 0xE0);
+        byte3 = 0x00;
+        byte4 = 0x00;
+    #endif
 
 	digitalWrite(_ss, LOW);
 	SPI.transfer(LOAD_TX_BUF_0_ID);
-	SPI.transfer(id_high); //identifier high bits
-	SPI.transfer(id_low); //identifier low bits
-	SPI.transfer(0x00); //extended identifier registers(unused)
-	SPI.transfer(0x00);
+	SPI.transfer(byte1); //identifier high bits
+	SPI.transfer(byte2); //identifier low bits
+	SPI.transfer(byte3); //extended identifier registers, high bits
+	SPI.transfer(byte4); //extended identifier registers, low bits
 	SPI.transfer(length);
 	for (i=0;i<length;i++) { //load data buffer
 		SPI.transfer(data[i]);
@@ -746,22 +872,39 @@ void CANBus::load_ff_0(byte length,unsigned short identifier,byte *data)
 
 }
 
-
-void CANBus::load_ff_1(byte length,unsigned short identifier,byte *data)
+void CANBus::load_ff_1(byte length,IDENTIFIER_INT identifier,byte *data,byte ide)
 {
 
-	byte i,id_high,id_low;
-
+    byte i, byte1, byte2, byte3, byte4 = 0;
+    
 	//generate id bytes before SPI write
-	id_high = (byte) (identifier >> 3);
-	id_low = (byte) ((identifier << 5) & 0x00E0);
+     #ifdef SUPPORTS_29BIT
+        if (ide) {
+            byte1 = byte ((identifier << 3) >> 24); // 8 MSBits of SID
+            byte2 = byte ((identifier << 11) >> 24) & 0xE0; // 3 LSBits of SID
+            byte2 = byte2 | byte ((identifier << 14) >> 30); // 2 MSBits of EID
+            byte2 = byte2 | 0x08; // EXIDE
+            byte3 = byte ((identifier << 16) >> 24); // EID Bits 15-8
+            byte4 = byte ((identifier << 24) >> 24); // EID Bits 7-0
+        } else {
+            byte1 = byte ((identifier << 21) >> 24); // 8 MSBits of SID
+            byte2 = byte ((identifier << 29) >> 24) & 0xE0; // 3 LSBits of SID
+            byte3 = 0; // TXBnEID8
+            byte4 = 0; // TXBnEID0
+        }
+    #else
+        byte1 = (byte) (identifier >> 3);
+        byte2 = (byte) ((identifier << 5) & 0x00E0);
+        byte3 = 0x00;
+        byte4 = 0x00;
+    #endif
 
 	digitalWrite(_ss, LOW);
 	SPI.transfer(LOAD_TX_BUF_1_ID);
-	SPI.transfer(id_high); //identifier high bits
-	SPI.transfer(id_low); //identifier low bits
-	SPI.transfer(0x00); //extended identifier registers(unused)
-	SPI.transfer(0x00);
+	SPI.transfer(byte1); //identifier high bits
+	SPI.transfer(byte2); //identifier low bits
+	SPI.transfer(byte3); //extended identifier registers, high bits
+	SPI.transfer(byte4); //extended identifier registers, low bits
 	SPI.transfer(length);
 	for (i=0;i<length;i++) { //load data buffer
 		SPI.transfer(data[i]);
@@ -772,22 +915,40 @@ void CANBus::load_ff_1(byte length,unsigned short identifier,byte *data)
 }
 
 
-void CANBus::load_ff_2(byte length,unsigned short identifier,byte *data)
+void CANBus::load_ff_2(byte length,IDENTIFIER_INT identifier,byte *data,byte ide)
 {
 
-	byte i,id_high,id_low;
+    byte i, byte1, byte2, byte3, byte4 = 0;
 
 	//generate id bytes before SPI write
-	id_high = (byte) (identifier >> 3);
-	id_low = (byte) ((identifier << 5) & 0x00E0);
+     #ifdef SUPPORTS_29BIT
+        if (ide) {
+            byte1 = byte ((identifier << 3) >> 24); // 8 MSBits of SID
+            byte2 = byte ((identifier << 11) >> 24) & 0xE0; // 3 LSBits of SID
+            byte2 = byte2 | byte ((identifier << 14) >> 30); // 2 MSBits of EID
+            byte2 = byte2 | 0x08; // EXIDE
+            byte3 = byte ((identifier << 16) >> 24); // EID Bits 15-8
+            byte4 = byte ((identifier << 24) >> 24); // EID Bits 7-0
+        } else {
+            byte1 = byte ((identifier << 21) >> 24); // 8 MSBits of SID
+            byte2 = byte ((identifier << 29) >> 24) & 0xE0; // 3 LSBits of SID
+            byte3 = 0; // TXBnEID8
+            byte4 = 0; // TXBnEID0
+        }
+    #else
+        byte1 = (byte) (identifier >> 3);
+        byte2 = (byte) ((identifier << 5) & 0x00E0);
+        byte3 = 0x00
+        byte4 = 0x00
+    #endif
 
 	digitalWrite(_ss, LOW);
 
 	SPI.transfer(LOAD_TX_BUF_2_ID);
-	SPI.transfer(id_high); //identifier high bits
-	SPI.transfer(id_low); //identifier low bits
-	SPI.transfer(0x00); //extended identifier registers(unused)
-	SPI.transfer(0x00);
+	SPI.transfer(byte1); //identifier high bits
+	SPI.transfer(byte2); //identifier low bits
+	SPI.transfer(byte3); //extended identifier registers, high bits
+	SPI.transfer(byte4); //extended identifier registers, low bits
 	SPI.transfer(length); //data length code
 	for (i=0;i<length;i++) { //load data buffer
 		SPI.transfer(data[i]);

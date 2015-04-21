@@ -16,7 +16,7 @@ class Naptime : public Middleware
     static void handleInterrupt();
     boolean enabled;
     unsigned long timer;
-    unsigned short resetId;
+    IDENTIFIER_INT resetId;
     Naptime(SerialCommand *serialCommand);
     Naptime(int, SerialCommand *serialCommand);
     void commandHandler(byte* bytes, int length);
@@ -84,7 +84,7 @@ void Naptime::tick()
     // TODO: Make this optional by checking resetId
     // Leave Bus1 awake and set a filter to wake the system up
     busses[0].setMode(CONFIGURATION);
-    busses[0].setFilter( resetId, resetId );
+    busses[0].setFilter( 0x00, resetId, resetId );
     busses[0].bitModify( CANINTF, 0, 0x03 );
     busses[0].setMode(NORMAL);
     delay(2);
