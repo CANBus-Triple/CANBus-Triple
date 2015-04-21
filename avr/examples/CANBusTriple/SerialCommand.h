@@ -118,8 +118,6 @@ unsigned long lastBluetoothRX = millis();
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
-
-
 SerialCommand::SerialCommand( QueueArray<Message> *q )
 {
   mainQueue = q;
@@ -153,7 +151,6 @@ void SerialCommand::tick()
     return;
   }
 
-
   if( Serial1.available() > 0 ){
     activeSerial = &Serial1;
     processCommand( Serial1.read() );
@@ -163,14 +160,15 @@ void SerialCommand::tick()
     activeSerial = &Serial;
     processCommand( Serial.read() );
   }
-
 }
+
 
 Message SerialCommand::process( Message msg )
 {
   printMessageToSerial(msg);
   return msg;
 }
+
 
 void SerialCommand::commandHandler(byte* bytes, int length){}
 
@@ -184,8 +182,6 @@ void SerialCommand::printMessageToSerial( Message msg )
   if( !(busLogEnabled & flag) ){
     return;
   }
-
-
 
   #ifdef JSON_OUT
     // Output to serial as json string
@@ -229,8 +225,6 @@ void SerialCommand::printMessageToSerial( Message msg )
 }
 
 
-
-
 void SerialCommand::processCommand(int command)
 {
 
@@ -269,9 +263,6 @@ void SerialCommand::processCommand(int command)
 
     break;
   }
-
-
-
   clearBuffer();
 }
 
@@ -311,10 +302,7 @@ void SerialCommand::settingsCall()
       resetToBootloader();
     break;
   }
-
-
 }
-
 
 
 void SerialCommand::setBluetoothFilter(){
@@ -326,28 +314,25 @@ void SerialCommand::setBluetoothFilter(){
     btMessageIdFilters[cmd[0]][0] = (cmd[1] << 8)+cmd[2];
     btMessageIdFilters[cmd[0]][1] = (cmd[3] << 8)+cmd[4];
   }
-
 }
 
 
-
 void SerialCommand::bitRate(){
-  
+
   byte cmd[3],
        bytesRead;
-  
+
   bytesRead = getCommandBody( cmd, 3 );
-  
+
   if(bytesRead == 3)
     Settings::setBaudRate( cmd[0], (cmd[1] << 8) + cmd[2] );
-  
+
   activeSerial->print( F( "{\"event\":\"bitrate-bus" ) );
   activeSerial->print(cmd[0]);
   activeSerial->print( F( "\", \"rate\":" ) );
   activeSerial->print( Settings::getBaudRate( cmd[0] ), DEC );
-  activeSerial->println( F( "}" ) ); 
+  activeSerial->println( F( "}" ) );
 }
-
 
 
 void SerialCommand::logCommand()
@@ -391,7 +376,7 @@ void SerialCommand::getAndSaveEeprom()
   byte* settings = (byte *) &cbt_settings;
   byte cmd[CHUNK_SIZE+1];
   int bytesRead = getCommandBody( cmd, CHUNK_SIZE+2 );
-  
+
   if( bytesRead == CHUNK_SIZE+2 && cmd[CHUNK_SIZE+1] == 0xA1 ){
 
     memcpy( settings+(cmd[0]*CHUNK_SIZE), &cmd[1], CHUNK_SIZE );
@@ -410,8 +395,6 @@ void SerialCommand::getAndSaveEeprom()
     activeSerial->print(cmd[0]);
     activeSerial->println(F("\"}"));
   }
-
-
 }
 
 
@@ -438,7 +421,6 @@ void SerialCommand::getAndSend()
   mainQueue->push( msg );
 
 }
-
 
 
 void SerialCommand::bluetooth(){
@@ -468,9 +450,6 @@ void SerialCommand::bluetooth(){
 }
 
 
-
-
-
 int SerialCommand::getCommandBody( byte* cmd, int length )
 {
   unsigned int i = 0;
@@ -483,6 +462,7 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
 
   return i;
 }
+
 
 void SerialCommand::clearBuffer()
 {
@@ -510,6 +490,7 @@ void SerialCommand::printChannelDebug(){
      printChannelDebug( busses[cmd[0]-1] );
 }
 
+
 void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b00000001)      //EWARN
     activeSerial->print( F("Receive Error Warning - TEC or REC >= 96, ") );
@@ -528,8 +509,9 @@ void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b10000000)      //RX1OVR
     activeSerial->print( F("Receive Buffer 1 Overflow, ") );
   if (channel.readRegister(EFLG) ==0)                  //No errors
-    activeSerial->print( F("No Errors") ); 
+    activeSerial->print( F("No Errors") );
 }
+
 
 void SerialCommand::printChannelDebug(CANBus channel){
 
@@ -540,7 +522,7 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( F("\", \"status\":\""));
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
-  activeSerial->print( channel.readRegister(EFLG), HEX ); 
+  activeSerial->print( channel.readRegister(EFLG), HEX );
   if( activeSerial == &Serial ){
     activeSerial->print( F("\", \"errorText\":\""));
     printEFLG(channel);
@@ -564,8 +546,6 @@ void SerialCommand::registerCommand(byte commandId, Middleware *cbInstance)
 }
 
 
-
-
 void SerialCommand::resetToBootloader()
 {
   cli();
@@ -582,44 +562,46 @@ void SerialCommand::resetToBootloader()
 void SerialCommand::dumpEeprom()
 {
   activeSerial->print( F("{\"event\":\"eeprom\", \"data\":\"") );
-  
+
   // dump eeprom
   for(int i=0; i<512; i++){
     uint8_t v = EEPROM.read(i);
-    if (v < 0x10)		
+    if (v < 0x10)
       activeSerial->print( "0" );
-    
+
     activeSerial->print( v, HEX );
-    
+
     // Bluetooth buffer delay
     if( activeSerial == &Serial1 )
       btDelay();
-      
+
   }
   activeSerial->println(F("\"}"));
 
 }
 
+
 void SerialCommand::btDelay(){
-  
+
   byteCount++;
-  
+
   if( byteCount >= 8 ){
     delay(BT_SEND_DELAY);
     byteCount = 0;
+
   }
-  
+
 }
 
 
 bool SerialCommand::btRateLimit(){
-  
+
   if( lastBluetoothRX + 30 < millis() ){
     lastBluetoothRX = millis();
     return false;
   }else
      return true;
-  
+
 }
 
 
@@ -630,4 +612,3 @@ int SerialCommand::freeRam (){
 }
 
 #endif
-

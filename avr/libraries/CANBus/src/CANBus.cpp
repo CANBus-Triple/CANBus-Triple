@@ -25,13 +25,16 @@ CANBus::CANBus( int ss, int reset ){
     CANBus( ss, reset, 0, "Default" );
 }
 
+
 void CANBus::setName( String s ){
     name = s;
 }
 
+
 void CANBus::setBusId( unsigned int n ){
     busId = n;
 }
+
 
 void CANBus::begin()//constructor for initializing can module.
 {
@@ -53,6 +56,7 @@ void CANBus::begin()//constructor for initializing can module.
 	digitalWrite(_reset,HIGH);
 	delay(50);
 }
+
 
 void CANBus::reset()//constructor for initializing can module.
 {
@@ -156,7 +160,6 @@ case 1000:
 
   return true;
 }
-
 
 #else
 /*
@@ -284,7 +287,7 @@ int CANBus::getNextTxBuffer(){
 
 
 void CANBus::setFilter( int filter0, int filter1 ){
-    
+
     byte SIDH = filter0 >> 3;
     byte SIDL = filter0 << 5;
     this->writeRegister(RXF0SIDH, SIDH, SIDL ); // RXB0
@@ -498,6 +501,7 @@ char CANBus::readDATA_0()//reads DATA in recieve buffer 0
 	return retVal;
 }
 
+
 char CANBus::readDATA_1()//reads data in recieve buffer 1
 {
 	char retVal;
@@ -580,6 +584,7 @@ byte CANBus::readRegister( int addr )
 	digitalWrite(_ss, HIGH);
 	return retVal;
 }
+
 
 void CANBus::writeRegister( int addr, byte value )
 {

@@ -1,6 +1,4 @@
 
-
-
 #include <avr/eeprom.h>
 
 struct pid {
@@ -60,16 +58,18 @@ void Settings::save( struct cbt_settings *settings )
   eeprom_write_block((const void*)settings, (void*)0, sizeof(cbt_settings));
 }
 
+
 void Settings::setBaudRate(byte busId, int rate){
   if( (busId < 1 || busId > 3) || rate < 1 ) return;
-  
+
   cbt_settings.busCfg[busId-1].baud = rate;
   save(&cbt_settings);
 }
 
+
 int Settings::getBaudRate(byte busId){
   if( (busId < 1 || busId > 3)) return 0;
-  
+
   return cbt_settings.busCfg[busId-1].baud;
 }
 
@@ -79,6 +79,7 @@ void Settings::clear()
   for (int i = 0; i < 512; i++)
     EEPROM.write(i, 0);
 }
+
 
 void Settings::firstbootSetup()
 {
@@ -206,7 +207,4 @@ void Settings::firstbootSetup()
     delay(500);
   }
 
-
 }
-
-
