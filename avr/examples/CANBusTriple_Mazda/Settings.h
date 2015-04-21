@@ -29,7 +29,7 @@ struct cbt_settings {
   byte placeholder6;
   byte placeholder7;
   struct pid pids[8];
-  byte padding[32];
+  byte padding[256];
 } cbt_settings;
 
 
@@ -62,14 +62,14 @@ void Settings::save( struct cbt_settings *settings )
 
 void Settings::setBaudRate(byte busId, int rate){
   if( (busId < 1 || busId > 3) || rate < 1 ) return;
-
+  
   cbt_settings.busCfg[busId-1].baud = rate;
   save(&cbt_settings);
 }
 
 int Settings::getBaudRate(byte busId){
   if( (busId < 1 || busId > 3)) return 0;
-
+  
   return cbt_settings.busCfg[busId-1].baud;
 }
 
@@ -208,3 +208,5 @@ void Settings::firstbootSetup()
 
 
 }
+
+
