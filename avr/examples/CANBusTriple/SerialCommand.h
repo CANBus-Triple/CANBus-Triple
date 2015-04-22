@@ -1,4 +1,3 @@
-
 /*
 // Serial Commands
 
@@ -55,7 +54,7 @@ TODO: Implement this ^^^
 */
 
 
-// #define JSON_OUT
+//#define JSON_OUT
 
 #ifndef SerialCommand_H
 #define SerialCommand_H
@@ -355,8 +354,6 @@ void SerialCommand::setBluetoothFilter(){
 
 }
 
-}
-
 
 
 void SerialCommand::bitRate(){
@@ -406,7 +403,7 @@ void SerialCommand::logCommand()
     bus.setMode(CONFIGURATION);
     bus.clearFilters();
     #ifdef SUPPORTS_29BIT
-      if( cmd[2] + cmd[3] + cmd[4] + cmd[5] + cmd[6] + cmd[7] + cmd[8] + cmd[9] + cmd[10] + cmd[11])
+      if( cmd[2] + cmd[3] + cmd[4] + cmd[5] + cmd[6] + cmd[7] + cmd[8] + cmd[9] + cmd[10])
         bus.setFilter( cmd[2], (cmd[3] << 24) + (cmd[4] << 16) + (cmd[5] << 8) + cmd[6], (cmd[7] << 24) + (cmd[8] << 16) + (cmd[9] << 8) + cmd[10] );
     #else
       if( cmd[2] + cmd[3] + cmd[4] + cmd[5] )
@@ -570,23 +567,23 @@ void SerialCommand::printChannelDebug(){
 
 void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b00000001)      //EWARN
-    activeSerial->print( F("Receive Error Warning - TEC or REC >= 96, ") );
+    activeSerial->print( F("\nReceive Error Warning - TEC or REC >= 96") );
   if (channel.readRegister(EFLG) & 0b00000010)      //RXWAR
-    activeSerial->print( F("Receive Error Warning - REC >= 9, ") );
+    activeSerial->print( F(", \nReceive Error Warning - REC >= 9") );
   if (channel.readRegister(EFLG) & 0b00000100)      //TXWAR
-    activeSerial->print( F("Transmit Error Warning - TEX >= 96, ") );
+    activeSerial->print( F(", \nTransmit Error Warning - TEX >= 96") );
   if (channel.readRegister(EFLG) & 0b00001000)      //RXEP
-    activeSerial->print( F("Receive Error Warning - REC >= 128, ") );
+    activeSerial->print( F(", \nReceive Error Warning - REC >= 128") );
   if (channel.readRegister(EFLG) & 0b00010000)      //TXEP
-    activeSerial->print( F("Transmit Error Warning - TEC >= 128, ") );
+    activeSerial->print( F(", \nTransmit Error Warning - TEC >= 128") );
   if (channel.readRegister(EFLG) & 0b00100000)      //TXBO
-    activeSerial->print( F("Bus Off - TEC exceeded 255, ") );
+    activeSerial->print( F(", \nBus Off - TEC exceeded 255") );
   if (channel.readRegister(EFLG) & 0b01000000)      //RX0OVR
-    activeSerial->print( F("Receive Buffer 0 Overflow, ") );
+    activeSerial->print( F(", \nReceive Buffer 0 Overflow") );
   if (channel.readRegister(EFLG) & 0b10000000)      //RX1OVR
-    activeSerial->print( F("Receive Buffer 1 Overflow, ") );
+    activeSerial->print( F(", \nReceive Buffer 1 Overflow") );
   if (channel.readRegister(EFLG) ==0)                  //No errors
-    activeSerial->print( F("No Errors") ); 
+    activeSerial->print( F(" - No Errors") ); 
 }
 
 void SerialCommand::printChannelDebug(CANBus channel){

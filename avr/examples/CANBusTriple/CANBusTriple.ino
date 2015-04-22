@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.4.4"
+    #define BUILD_VERSION "0.4.5"
 #endif
 // #define SLEEP_ENABLE
 
@@ -227,7 +227,7 @@ boolean sendMessage( Message msg, CANBus bus ){
       bus.send_1();
       break;
     case 2:
-      bus.load_ff_2( msg.length, msg.frame_id, msg.frame_data );
+      bus.load_ff_2( msg.length, msg.frame_id, msg.frame_data, msg.ide );
       bus.send_2();
       break;
     default:

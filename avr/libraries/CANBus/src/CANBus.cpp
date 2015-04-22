@@ -361,8 +361,8 @@ void CANBus::setFilter( byte ide, IDENTIFIER_INT filter0, IDENTIFIER_INT filter1
         SIDH = combined >> 3;
         SIDL = combined << 5;
         */
-        SIDH = 0xFF >> 3;
-        SIDL = 0xFF << 5;
+        SIDH = byte (0xFFFF >> 3);
+        SIDL = byte (0xFFFF << 5);
         this->writeRegister(RXM0SIDH, SIDH, SIDL );
         this->writeRegister(RXM1SIDH, SIDH, SIDL );
 
@@ -938,8 +938,8 @@ void CANBus::load_ff_2(byte length,IDENTIFIER_INT identifier,byte *data,byte ide
     #else
         byte1 = (byte) (identifier >> 3);
         byte2 = (byte) ((identifier << 5) & 0x00E0);
-        byte3 = 0x00
-        byte4 = 0x00
+        byte3 = 0x00;
+        byte4 = 0x00;
     #endif
 
 	digitalWrite(_ss, LOW);

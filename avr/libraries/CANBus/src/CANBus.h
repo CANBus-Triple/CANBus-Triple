@@ -155,7 +155,7 @@ CNF3=b'00000010'=0x02 = SOF = 0  & WAKFIL = 0 & PS2 = 3
 
 #define MERRF       0x80
 
-#define SUPPORTS_29BIT 0
+//#define SUPPORTS_29BIT
 
 
 #ifdef SUPPORTS_29BIT
