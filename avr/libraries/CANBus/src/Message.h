@@ -11,9 +11,10 @@ class Message {
         ~Message();
 
         byte length;
-        unsigned short frame_id;
+        IDENTIFIER_INT frame_id;
         byte frame_data[8];
 
+        byte ide; // identifier extension bit
         unsigned int busStatus; // Intended to hold status of the bus imediately before reading of the buffer.
         unsigned int busId;
         bool dispatch;
