@@ -119,14 +119,16 @@ void setup(){
   // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
 
   CANBus2.begin();
+  CANBus2.setClkPre(1);
   CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
   CANBus2.setRxInt(true);
   CANBus2.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
-  CANBus2.setMode(LISTEN);
+  CANBus2.setMode(NORMAL);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
 
   CANBus3.begin();
+  CANBus3.setClkPre(1);
   CANBus3.baudConfig(cbt_settings.busCfg[2].baud);
   CANBus3.setRxInt(true);
   CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);

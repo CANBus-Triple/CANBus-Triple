@@ -362,9 +362,9 @@ void SerialCommand::logCommand()
   CANBus bus = busses[ cmd[0]-1 ];
 
   if( cmd[1] )
-    busLogEnabled |= cmd[1] << (cmd[0]-1);
-    else
-    busLogEnabled &= cmd[1] << (cmd[0]-1);
+    busLogEnabled |= 1 << (cmd[0]-1);
+  else
+    busLogEnabled &= ~(1 << (cmd[0]-1));
 
   // Set filter if we got pids in the command
   if( bytesRead > 2 ){
@@ -514,7 +514,7 @@ void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b00000001)      //EWARN
     activeSerial->print( F("Receive Error Warning - TEC or REC >= 96, ") );
   if (channel.readRegister(EFLG) & 0b00000010)      //RXWAR
-    activeSerial->print( F("Receive Error Warning - REC >= 9, ") );
+    activeSerial->print( F("Receive Error Warning - REC >= 96, ") );
   if (channel.readRegister(EFLG) & 0b00000100)      //TXWAR
     activeSerial->print( F("Transmit Error Warning - TEX >= 96, ") );
   if (channel.readRegister(EFLG) & 0b00001000)      //RXEP
