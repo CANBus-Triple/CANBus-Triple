@@ -1,8 +1,8 @@
 /*
 *  CANBus Triple
 *  The Car Hacking Platform
-*  http://canb.us
-*  https://github.com/etx/CANBus-Triple
+*  https://canb.us
+*  https://github.com/CANBus-Triple
 */
 
 #include <avr/wdt.h>
@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.4.3"
+    #define BUILD_VERSION "0.4.4"
 #endif
 // #define SLEEP_ENABLE
 
@@ -57,7 +57,7 @@ Middleware *activeMiddleware[] = {
   new ChannelSwap(),
   mazdaLed,
   serviceCall,
-  new Naptime(0x0472, serialCommand),
+  // new Naptime(0x0472, serialCommand),
   new MazdaWheelButton(mazdaLed, serviceCall)
 };
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );
@@ -126,7 +126,7 @@ void setup(){
   CANBus2.begin();
   CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
   CANBus2.setRxInt(true);
-  CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
+  CANBus2.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
   CANBus2.setMode(LISTEN);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
@@ -171,7 +171,7 @@ void handleInterrupt3(){
 
 
 /*
-*  TODO, Comment on this method
+*  Main Loop
 */
 void loop() {
 
@@ -214,7 +214,7 @@ void loop() {
 
 
 /*
-*  TODO, Comment on this method
+*  Load CAN Controller buffer and set send flag
 */
 boolean sendMessage( Message msg, CANBus bus ){
 
@@ -251,7 +251,7 @@ boolean sendMessage( Message msg, CANBus bus ){
 
 
 /*
-*  TODO, Comment on this method
+*  Read Can Controller Buffer
 */
 void readBus( CANBus bus ){
 
@@ -285,7 +285,7 @@ void readBus( CANBus bus ){
 
 
 /*
-*  TODO, Comment on this method
+*  Process received CAN message through middleware
 */
 void processMessage( Message msg ){
 

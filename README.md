@@ -7,7 +7,7 @@
 See [CANBus Triple](http://www.canb.us) for more information, or to purchase hardware.
 
 ## About
-This repository contains the base firmware and libraries for the CANBus Triple. 
+This repository contains the base firmware and libraries for the CANBus Triple.
 
 [MCP2515 Library](https://github.com/CANBus-Triple/CANBus-Triple/tree/master/avr/libraries/CANBus/src) | [Examples](https://github.com/CANBus-Triple/CANBus-Triple/tree/master/avr/examples)
 
@@ -26,9 +26,9 @@ To clone:
 ``git clone https://github.com/CANBus-Triple/CANBus-Triple.git``
 
  Or download the zip and extract it to your sketchbook folder.
- 
- ![Image](http://res.cloudinary.com/ddbgan4vk/image/upload/v1423786377/download_z4of9y.jpg "") 
- 
+
+ ![Image](http://res.cloudinary.com/ddbgan4vk/image/upload/v1423786377/download_z4of9y.jpg "")
+
 ### Setup
 Launch the Arduino IDE and select the newly available board variant from the menu bar under **Tools > Board > CANBus Triple**
 
