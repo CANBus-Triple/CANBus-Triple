@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.4.3"
+    #define BUILD_VERSION "0.4.4"
 #endif
 // #define SLEEP_ENABLE
 
@@ -57,7 +57,7 @@ Middleware *activeMiddleware[] = {
   new ChannelSwap(),
   mazdaLed,
   serviceCall,
-  new Naptime(0x0472, serialCommand),
+  // new Naptime(0x0472, serialCommand),
   new MazdaWheelButton(mazdaLed, serviceCall)
 };
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );

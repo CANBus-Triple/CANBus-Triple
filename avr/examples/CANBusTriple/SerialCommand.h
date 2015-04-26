@@ -56,8 +56,10 @@ TODO: Implement this ^^^
 
 #define COMMAND_OK 0xFF
 #define COMMAND_ERROR 0x80
-#define NEWLINE "\r"
+#define NEWLINE "\r\n"
 #define MAX_MW_CALLBACKS 8
+#define BT_SEND_DELAY 20
+
 
 #include "Middleware.h"
 
@@ -93,7 +95,7 @@ class SerialCommand : public Middleware
     void settingsCall();
     void dumpEeprom();
     void getAndSaveEeprom();
-    void baudRate();
+    void bitRate();
     void logCommand();
     void bluetooth();
     void setBluetoothFilter();
@@ -103,10 +105,16 @@ class SerialCommand : public Middleware
     Message newMessage;
     byte buffer[];
     void printEFLG(CANBus);
+    int byteCount;
+    void btDelay();
+    bool btRateLimit();
+    unsigned long lastBluetoothRX;
 };
 
 
 byte mwCommandIndex = 0;
+int byteCount = 0;
+unsigned long lastBluetoothRX = millis();
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
@@ -196,12 +204,9 @@ void SerialCommand::printMessageToSerial( Message msg )
     activeSerial->println();
 
   #else
-    // Bluetooth filter
-    // TODO TEST
-    if( activeSerial == &Serial1 &&
-        btMessageIdFilters[msg.busId][0] != msg.frame_id &&
-        btMessageIdFilters[msg.busId][1] != msg.frame_id
-        ) return;
+
+    // Bluetooth rate limiting
+    if( activeSerial == &Serial1 && btRateLimit() ) return;
 
     activeSerial->write( 0x03 ); // Prefix with logging command
     activeSerial->write( msg.busId );
@@ -289,7 +294,7 @@ void SerialCommand::settingsCall()
       AutoBaud::baudDetect(cmd[0], activeSerial);
     break;
     case 0x09:
-      baudRate();
+      bitRate();
     break;
     case 0x10:
       printChannelDebug();
@@ -316,8 +321,9 @@ void SerialCommand::setBluetoothFilter(){
 }
 
 
-void SerialCommand::baudRate(){
 
+void SerialCommand::bitRate(){
+  
   byte cmd[3],
        bytesRead;
 
@@ -325,12 +331,12 @@ void SerialCommand::baudRate(){
 
   if(bytesRead == 3)
     Settings::setBaudRate( cmd[0], (cmd[1] << 8) + cmd[2] );
-
-  activeSerial->print( F( "{'event':'baud', 'bus':" ) );
+  
+  activeSerial->print( F( "{\"event\":\"bitrate-bus" ) );
   activeSerial->print(cmd[0]);
-  activeSerial->print( F( ", 'rate':" ) );
+  activeSerial->print( F( "\", \"rate\":" ) );
   activeSerial->print( Settings::getBaudRate( cmd[0] ), DEC );
-  activeSerial->println( F( "}" ) );
+  activeSerial->println( F( "}" ) ); 
 }
 
 
@@ -346,9 +352,9 @@ void SerialCommand::logCommand()
   CANBus bus = busses[ cmd[0]-1 ];
 
   if( cmd[1] )
-    busLogEnabled |= cmd[1] << (cmd[0]-1);
-    else
-    busLogEnabled &= cmd[1] << (cmd[0]-1);
+    busLogEnabled |= 1 << (cmd[0]-1);
+  else
+    busLogEnabled &= ~(1 << (cmd[0]-1));
 
   // Set filter if we got pids in the command
   if( bytesRead > 2 ){
@@ -491,23 +497,23 @@ void SerialCommand::printChannelDebug(){
 
 void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b00000001)      //EWARN
-    activeSerial->print( F("\nReceive Error Warning - TEC or REC >= 96") );
+    activeSerial->print( F("Receive Error Warning - TEC or REC >= 96, ") );
   if (channel.readRegister(EFLG) & 0b00000010)      //RXWAR
-    activeSerial->print( F(", \nReceive Error Warning - REC >= 96") );
+    activeSerial->print( F("Receive Error Warning - REC >= 96, ") );
   if (channel.readRegister(EFLG) & 0b00000100)      //TXWAR
-    activeSerial->print( F(", \nTransmit Error Warning - TEX >= 96") );
+    activeSerial->print( F("Transmit Error Warning - TEX >= 96, ") );
   if (channel.readRegister(EFLG) & 0b00001000)      //RXEP
-    activeSerial->print( F(", \nReceive Error Warning - REC >= 128") );
+    activeSerial->print( F("Receive Error Warning - REC >= 128, ") );
   if (channel.readRegister(EFLG) & 0b00010000)      //TXEP
-    activeSerial->print( F(", \nTransmit Error Warning - TEC >= 128") );
+    activeSerial->print( F("Transmit Error Warning - TEC >= 128, ") );
   if (channel.readRegister(EFLG) & 0b00100000)      //TXBO
-    activeSerial->print( F(", \nBus Off - TEC exceeded 255") );
+    activeSerial->print( F("Bus Off - TEC exceeded 255, ") );
   if (channel.readRegister(EFLG) & 0b01000000)      //RX0OVR
-    activeSerial->print( F(", \nReceive Buffer 0 Overflow") );
+    activeSerial->print( F("Receive Buffer 0 Overflow, ") );
   if (channel.readRegister(EFLG) & 0b10000000)      //RX1OVR
-    activeSerial->print( F(", \nReceive Buffer 1 Overflow") );
+    activeSerial->print( F("Receive Buffer 1 Overflow, ") );
   if (channel.readRegister(EFLG) ==0)                  //No errors
-    activeSerial->print( F(" - No Errors") );
+    activeSerial->print( F("No Errors") ); 
 }
 
 void SerialCommand::printChannelDebug(CANBus channel){
@@ -519,10 +525,12 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( F("\", \"status\":\""));
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
-  activeSerial->print( channel.readRegister(EFLG), BIN );
-  printEFLG(channel);
-  activeSerial->print( F("\""));
-  activeSerial->print( F(", \"nextTxBuffer\":\""));
+  activeSerial->print( channel.readRegister(EFLG), HEX ); 
+  if( activeSerial == &Serial ){
+    activeSerial->print( F("\", \"errorText\":\""));
+    printEFLG(channel);
+  }
+  activeSerial->print( F("\", \"nextTxBuffer\":\""));
   activeSerial->print( channel.getNextTxBuffer(), DEC );
   activeSerial->println(F("\"}"));
 }
@@ -555,15 +563,45 @@ void SerialCommand::resetToBootloader()
 
 void SerialCommand::dumpEeprom()
 {
+  activeSerial->print( F("{\"event\":\"eeprom\", \"data\":\"") );
+  
   // dump eeprom
   for(int i=0; i<512; i++){
     uint8_t v = EEPROM.read(i);
-    if (v < 0x10)
+    if (v < 0x10)		
       activeSerial->print( "0" );
+    
     activeSerial->print( v, HEX );
-    if(i<511) activeSerial->print( ":" );
+    
+    // Bluetooth buffer delay
+    if( activeSerial == &Serial1 )
+      btDelay();
+      
   }
+  activeSerial->println(F("\"}"));
 
+}
+
+void SerialCommand::btDelay(){
+  
+  byteCount++;
+  
+  if( byteCount >= 8 ){
+    delay(BT_SEND_DELAY);
+    byteCount = 0;
+  }
+  
+}
+
+
+bool SerialCommand::btRateLimit(){
+  
+  if( lastBluetoothRX + 30 < millis() ){
+    lastBluetoothRX = millis();
+    return false;
+  }else
+     return true;
+  
 }
 
 
