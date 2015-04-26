@@ -59,6 +59,7 @@ TODO: Implement this ^^^
 #define NEWLINE "\r\n"
 #define MAX_MW_CALLBACKS 8
 #define BT_SEND_DELAY 20
+#define COMMAND_TIMEOUT 100   // ms to wait before serial command timeout
 
 
 #include "Middleware.h"
@@ -175,14 +176,12 @@ void SerialCommand::commandHandler(byte* bytes, int length){}
 
 void SerialCommand::printMessageToSerial( Message msg )
 {
-
   // Bus Filter
   byte flag;
   flag = 0x1 << (msg.busId-1);
   if( !(busLogEnabled & flag) ){
     return;
   }
-
 
   #ifdef JSON_OUT
     // Output to serial as json string
@@ -228,8 +227,9 @@ void SerialCommand::printMessageToSerial( Message msg )
 
 void SerialCommand::processCommand(int command)
 {
-
-  delay(32); // Delay to wait for the entire command from Serial
+//  Commented out because causes corrupted data when sending serial to Android Bluetooth
+//  The necessary delay is now moved into method getCommandBody() 
+//  delay(32); // Delay to wait for the entire command from Serial
 
   switch( command ){
     case 0x01:
@@ -271,9 +271,8 @@ void SerialCommand::processCommand(int command)
 
 void SerialCommand::settingsCall()
 {
-
   byte cmd[1];
-  int bytesRead = getCommandBody( cmd, 1 );
+  if (getCommandBody( cmd, 1 ) != 1) return;
 
   // Debug Command
   switch( cmd[0] ){
@@ -326,9 +325,9 @@ void SerialCommand::bitRate(){
   
   byte cmd[3],
        bytesRead;
-  
+
   bytesRead = getCommandBody( cmd, 3 );
-  
+
   if(bytesRead == 3)
     Settings::setBaudRate( cmd[0], (cmd[1] << 8) + cmd[2] );
   
@@ -381,7 +380,7 @@ void SerialCommand::getAndSaveEeprom()
   byte* settings = (byte *) &cbt_settings;
   byte cmd[CHUNK_SIZE+1];
   int bytesRead = getCommandBody( cmd, CHUNK_SIZE+2 );
-  
+
   if( bytesRead == CHUNK_SIZE+2 && cmd[CHUNK_SIZE+1] == 0xA1 ){
 
     memcpy( settings+(cmd[0]*CHUNK_SIZE), &cmd[1], CHUNK_SIZE );
@@ -400,7 +399,6 @@ void SerialCommand::getAndSaveEeprom()
     activeSerial->print(cmd[0]);
     activeSerial->println(F("\"}"));
   }
-
 
 }
 
@@ -462,7 +460,14 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
   unsigned int i = 0;
 
   // Loop until requested amount of bytes are sent. Needed for BT latency
-  while( i < length && activeSerial->available() ){
+  int timeout = COMMAND_TIMEOUT;
+  while( i < length ) {
+    // Cannot simply use delay() because Android Bluetooth gets corrupted data
+    while(activeSerial->available() == 0 && timeout > 0) {
+      delay(1);
+      timeout--;
+    }
+    if (timeout == 0) return i;
     cmd[i] = activeSerial->read();
     i++;
   }
@@ -480,11 +485,11 @@ void SerialCommand::clearBuffer()
 
 void SerialCommand::printSystemDebug()
 {
-  activeSerial->print("{\"event\":\"version\", \"name\":\""+String(BUILDNAME)+
+  activeSerial->print("{\"event\":\"version\", \"name\":\""+String(BUILDNAME)+"\", "+
 #ifdef BUILD_VERSION
-   "\", \"version\":\""+String(BUILD_VERSION)+
+   "\"version\":\""+String(BUILD_VERSION)+"\", "+
 #endif
-   "\", \"memory\":\"");
+   "\"memory\":\"");
   activeSerial->print(freeRam());
   activeSerial->println(F("\"}"));
 }
@@ -554,8 +559,6 @@ void SerialCommand::registerCommand(byte commandId, Middleware *cbInstance)
 }
 
 
-
-
 void SerialCommand::resetToBootloader()
 {
   cli();
@@ -566,7 +569,6 @@ void SerialCommand::resetToBootloader()
   EIMSK = 0; PCICR = 0; SPCR = 0; ACSR = 0; EECR = 0; ADCSRA = 0;
   TIMSK0 = 0; TIMSK1 = 0; TIMSK3 = 0;
   asm volatile("jmp 0x7000");
-
 }
 
 
@@ -590,6 +592,7 @@ void SerialCommand::dumpEeprom()
   activeSerial->println(F("\"}"));
 
 }
+
 
 void SerialCommand::btDelay(){
   
