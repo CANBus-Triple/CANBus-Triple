@@ -206,5 +206,4 @@ void Settings::firstbootSetup()
     delay(500);
   }
 
-
 }

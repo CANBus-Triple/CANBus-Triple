@@ -381,7 +381,7 @@ void SerialCommand::getAndSaveEeprom()
   byte* settings = (byte *) &cbt_settings;
   byte cmd[CHUNK_SIZE+1];
   int bytesRead = getCommandBody( cmd, CHUNK_SIZE+2 );
-
+  
   if( bytesRead == CHUNK_SIZE+2 && cmd[CHUNK_SIZE+1] == 0xA1 ){
 
     memcpy( settings+(cmd[0]*CHUNK_SIZE), &cmd[1], CHUNK_SIZE );
@@ -495,6 +495,7 @@ void SerialCommand::printChannelDebug(){
   getCommandBody( cmd, 1 );
   if( cmd[0] > 0 && cmd[0] <= 3 )
     printChannelDebug( busses[cmd[0]-1] );
+
 }
 
 
@@ -520,6 +521,7 @@ void SerialCommand::printEFLG(CANBus channel) {
 }
 
 void SerialCommand::printChannelDebug(CANBus channel){
+
   activeSerial->print( F("{\"event\":\"busdbg\", \"name\":\"") );
   activeSerial->print( channel.name );
   activeSerial->print( F("\", \"canctrl\":\""));
@@ -552,6 +554,8 @@ void SerialCommand::registerCommand(byte commandId, Middleware *cbInstance)
 }
 
 
+
+
 void SerialCommand::resetToBootloader()
 {
   cli();
@@ -575,13 +579,14 @@ void SerialCommand::dumpEeprom()
     uint8_t v = EEPROM.read(i);
     if (v < 0x10)
       activeSerial->print( "0" );
+
     activeSerial->print( v, HEX );
     
     // Bluetooth buffer delay
     if( activeSerial == &Serial1 )
       btDelay();
-      
   }
+
   activeSerial->println(F("\"}"));
 
 }

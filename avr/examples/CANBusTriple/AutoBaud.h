@@ -30,11 +30,10 @@ int AutoBaud::baudDetect(byte busId, Stream* activeSerial){
       io = CAN3INT_D;
     break;
   }
-
+ 
   // Save settings
   byte canctrl = channel.readRegister( CANCTRL );
   byte caninte = channel.readRegister( CANINTE );
-
 
   int rates[9] = {10, 20, 50, 83, 100, 125, 250, 500, 1000};
 

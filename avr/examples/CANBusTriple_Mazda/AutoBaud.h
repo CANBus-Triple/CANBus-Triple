@@ -35,7 +35,6 @@ int AutoBaud::baudDetect(byte busId, Stream* activeSerial){
   byte canctrl = channel.readRegister( CANCTRL );
   byte caninte = channel.readRegister( CANINTE );
 
-
   int rates[9] = {10, 20, 50, 83, 100, 125, 250, 500, 1000};
 
   /*
@@ -58,7 +57,6 @@ int AutoBaud::baudDetect(byte busId, Stream* activeSerial){
     delay(5);
     channel.bitModify( CANINTF, 0x00, 0xFF ); // Clear Interrupts
     delay(5);
-
 
     delay(200); // Wait for errors
 
@@ -86,7 +84,6 @@ int AutoBaud::baudDetect(byte busId, Stream* activeSerial){
   activeSerial->print(F("{\"event\":\"autobaudComplete\", \"rate\":"));
   activeSerial->print(rateFound);
   activeSerial->println("}");
-
 
   // Save new baud rate to eeprom settings
   if(rateFound)

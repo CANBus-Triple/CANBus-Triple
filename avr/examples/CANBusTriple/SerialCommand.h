@@ -321,7 +321,6 @@ void SerialCommand::setBluetoothFilter(){
 }
 
 
-
 void SerialCommand::bitRate(){
   
   byte cmd[3],
@@ -381,7 +380,7 @@ void SerialCommand::getAndSaveEeprom()
   byte* settings = (byte *) &cbt_settings;
   byte cmd[CHUNK_SIZE+1];
   int bytesRead = getCommandBody( cmd, CHUNK_SIZE+2 );
-
+  
   if( bytesRead == CHUNK_SIZE+2 && cmd[CHUNK_SIZE+1] == 0xA1 ){
 
     memcpy( settings+(cmd[0]*CHUNK_SIZE), &cmd[1], CHUNK_SIZE );
@@ -546,6 +545,8 @@ void SerialCommand::registerCommand(byte commandId, Middleware *cbInstance)
   mwCommandIndex++;
 
 }
+
+
 
 
 void SerialCommand::resetToBootloader()
