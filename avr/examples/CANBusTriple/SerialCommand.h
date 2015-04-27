@@ -233,9 +233,6 @@ void SerialCommand::printMessageToSerial( Message msg )
 
 void SerialCommand::processCommand(int command)
 {
-
-  delay(32); // Delay to wait for the entire command from Serial
-
   switch( command ){
     case 0x01:
       settingsCall();
@@ -475,8 +472,13 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
 {
   unsigned int i = 0;
 
+  while (activeSerial->available() < length)
+    delay(5); // Delay to wait for the entire command from Serial
+              // 115200 baud / 8 bites-per-byte / 64-bytes in rx buffer = 4.4ms to fill buffer
+  //FIXME No clear way to syncronize.
+
   // Loop until requested amount of bytes are sent. Needed for BT latency
-  while( i < length && activeSerial->available() ){
+  while( i < length){
     cmd[i] = activeSerial->read();
     i++;
   }
