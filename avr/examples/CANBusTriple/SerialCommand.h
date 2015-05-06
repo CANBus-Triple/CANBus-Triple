@@ -63,6 +63,7 @@ TODO: Implement this ^^^
 
 
 #include "Middleware.h"
+#include <CANBus.h>
 
 
 struct middleware_command {
@@ -97,6 +98,7 @@ class SerialCommand : public Middleware
     void dumpEeprom();
     void getAndSaveEeprom();
     void bitRate();
+    void canMode();
     void logCommand();
     void bluetooth();
     void setBluetoothFilter();
@@ -296,6 +298,9 @@ void SerialCommand::settingsCall()
     case 0x09:
       bitRate();
     break;
+    case 0x0A:
+      canMode();
+    break;    
     case 0x10:
       printChannelDebug();
     break;
@@ -320,7 +325,6 @@ void SerialCommand::setBluetoothFilter(){
 }
 
 
-
 void SerialCommand::bitRate(){
   
   byte cmd[3],
@@ -339,21 +343,60 @@ void SerialCommand::bitRate(){
 }
 
 
+void SerialCommand::canMode(){
+  
+  byte cmd[3], bytesRead;
+
+  bytesRead = getCommandBody( cmd, 2 );
+
+  if(bytesRead == 2)
+    Settings::setCanMode( cmd[0], cmd[1] );
+  
+  CANMode mode = Settings::getCanMode( cmd[0] );
+
+  activeSerial->print( F( "{\"event\":\"can-mode-bus" ) );
+  activeSerial->print(cmd[0]);
+  activeSerial->print( F( "\", \"mode\":\"" ) );
+  switch(mode) {
+    case CONFIGURATION:
+      activeSerial->print( F("CONFIGURATION") );
+      break;
+    case NORMAL:
+      activeSerial->print( F("NORMAL") );
+      break;
+    case SLEEP:
+      activeSerial->print( F("SLEEP") );
+      break;
+    case LISTEN:
+      activeSerial->print( F("LISTEN") );
+      break;
+    case LOOPBACK:
+      activeSerial->print( F("LOOPBACK") );
+      break;
+    default:
+      activeSerial->print( F("UNKNOWN") );
+      break;            
+  }
+  activeSerial->println( F( "\"}" ) ); 
+}
+
+
 void SerialCommand::logCommand()
 {
   byte cmd[6] = {0};
   int bytesRead = getCommandBody( cmd, 6 );
+  int busId = cmd[0] - 1;
 
-  if( cmd[0] < 1 || cmd[0] > 3 ){
+  if( busId < 0 || busId > 2 ){
     activeSerial->write(COMMAND_ERROR);
     return;
   }
-  CANBus bus = busses[ cmd[0]-1 ];
+  CANBus bus = busses[busId];
 
   if( cmd[1] )
-    busLogEnabled |= 1 << (cmd[0]-1);
+    busLogEnabled |= 1 << busId;
   else
-    busLogEnabled &= ~(1 << (cmd[0]-1));
+    busLogEnabled &= ~(1 << busId);
 
   // Set filter if we got pids in the command
   if( bytesRead > 2 ){
@@ -362,7 +405,7 @@ void SerialCommand::logCommand()
     bus.clearFilters();
     if( cmd[2] + cmd[3] + cmd[4] + cmd[5] )
       bus.setFilter( (cmd[2]<<8) + cmd[3], (cmd[4]<<8) + cmd[5] );
-    bus.setMode(NORMAL);
+    bus.setMode(Settings::getCanMode(busId));
 
   }
 
