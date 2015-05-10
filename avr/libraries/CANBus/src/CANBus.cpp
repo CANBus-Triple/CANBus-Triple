@@ -280,7 +280,7 @@ void CANBus::setRxInt(bool b){
         writeVal = 0x00;
     }
 
-    this->bitModify(CANINTE, 0x03, writeVal);
+    this->bitModify(CANINTE, writeVal, 0x03);
 
 }
 
@@ -326,7 +326,7 @@ void CANBus::setClkPre(int mode){
             break;  
     }
 
-    this->bitModify(CANCTRL, 0x03, writeVal);
+    this->bitModify(CANCTRL, writeVal, 0x03);
 
 }
 
@@ -354,7 +354,7 @@ void CANBus::setMode(CANMode mode) { //put CAN controller in one of five modes
           break;
     }
 
-    this->bitModify(CANCTRL, 0xE0, writeVal);
+    this->bitModify(CANCTRL, writeVal, 0xE0);
 
 }
 
