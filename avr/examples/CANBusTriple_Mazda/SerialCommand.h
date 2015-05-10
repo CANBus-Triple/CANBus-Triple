@@ -385,18 +385,17 @@ void SerialCommand::logCommand()
 {
   byte cmd[6] = {0};
   int bytesRead = getCommandBody( cmd, 6 );
-  int busId = cmd[0] - 1;
 
-  if( busId < 0 || busId > 2 ){
+  if( cmd[0] < 1 || cmd[0] > 3 ){
     activeSerial->write(COMMAND_ERROR);
     return;
   }
-  CANBus bus = busses[busId];
+  CANBus bus = busses[ cmd[0]-1 ];
 
   if( cmd[1] )
-    busLogEnabled |= 1 << busId;
+    busLogEnabled |= 1 << (cmd[0]-1);
   else
-    busLogEnabled &= ~(1 << busId);
+    busLogEnabled &= ~(1 << (cmd[0]-1));
 
   // Set filter if we got pids in the command
   if( bytesRead > 2 ){
@@ -405,7 +404,7 @@ void SerialCommand::logCommand()
     bus.clearFilters();
     if( cmd[2] + cmd[3] + cmd[4] + cmd[5] )
       bus.setFilter( (cmd[2]<<8) + cmd[3], (cmd[4]<<8) + cmd[5] );
-    bus.setMode(Settings::getCanMode(busId));
+    bus.setMode(Settings::getCanMode(cmd[0]));
 
   }
 
