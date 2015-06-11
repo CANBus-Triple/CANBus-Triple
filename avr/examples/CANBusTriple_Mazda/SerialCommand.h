@@ -362,9 +362,9 @@ void SerialCommand::logCommand()
   CANBus bus = busses[ cmd[0]-1 ];
 
   if( cmd[1] )
-    busLogEnabled |= 1 << (cmd[0]-1);
-  else
-    busLogEnabled &= ~(1 << (cmd[0]-1));
+    busLogEnabled |= cmd[1] << (cmd[0]-1);
+    else
+    busLogEnabled &= cmd[1] << (cmd[0]-1);
 
   // Set filter if we got pids in the command
   if( bytesRead > 2 ){
@@ -512,23 +512,23 @@ void SerialCommand::printChannelDebug(){
 
 void SerialCommand::printEFLG(CANBus channel) {
   if (channel.readRegister(EFLG) & 0b00000001)      //EWARN
-    activeSerial->print( F("Receive Error Warning - TEC or REC >= 96, ") );
+    activeSerial->print( F("\nReceive Error Warning - TEC or REC >= 96") );
   if (channel.readRegister(EFLG) & 0b00000010)      //RXWAR
-    activeSerial->print( F("Receive Error Warning - REC >= 96, ") );
+    activeSerial->print( F(", \nReceive Error Warning - REC >= 9") );
   if (channel.readRegister(EFLG) & 0b00000100)      //TXWAR
-    activeSerial->print( F("Transmit Error Warning - TEX >= 96, ") );
+    activeSerial->print( F(", \nTransmit Error Warning - TEX >= 96") );
   if (channel.readRegister(EFLG) & 0b00001000)      //RXEP
-    activeSerial->print( F("Receive Error Warning - REC >= 128, ") );
+    activeSerial->print( F(", \nReceive Error Warning - REC >= 128") );
   if (channel.readRegister(EFLG) & 0b00010000)      //TXEP
-    activeSerial->print( F("Transmit Error Warning - TEC >= 128, ") );
+    activeSerial->print( F(", \nTransmit Error Warning - TEC >= 128") );
   if (channel.readRegister(EFLG) & 0b00100000)      //TXBO
-    activeSerial->print( F("Bus Off - TEC exceeded 255, ") );
+    activeSerial->print( F(", \nBus Off - TEC exceeded 255") );
   if (channel.readRegister(EFLG) & 0b01000000)      //RX0OVR
-    activeSerial->print( F("Receive Buffer 0 Overflow, ") );
+    activeSerial->print( F(", \nReceive Buffer 0 Overflow") );
   if (channel.readRegister(EFLG) & 0b10000000)      //RX1OVR
-    activeSerial->print( F("Receive Buffer 1 Overflow, ") );
+    activeSerial->print( F(", \nReceive Buffer 1 Overflow") );
   if (channel.readRegister(EFLG) ==0)                  //No errors
-    activeSerial->print( F("No Errors") ); 
+    activeSerial->print( F(" - No Errors") ); 
 }
 
 void SerialCommand::printChannelDebug(CANBus channel){
@@ -541,12 +541,10 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
   activeSerial->print( channel.readRegister(EFLG), HEX ); 
-  /*
   if( activeSerial == &Serial ){
     activeSerial->print( F("\", \"errorText\":\""));
     printEFLG(channel);
   }
-  */
   activeSerial->print( F("\", \"nextTxBuffer\":\""));
   activeSerial->print( channel.getNextTxBuffer(), DEC );
   activeSerial->println(F("\"}"));

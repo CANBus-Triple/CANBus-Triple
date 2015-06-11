@@ -1,5 +1,6 @@
 
 #include "Middleware.h"
+#include <CANBus.h>
 
 #define NUM_PID_TO_PROCESS 2
 #define BLUETOOTH_SENSORS
@@ -23,7 +24,7 @@ class ServiceCall : public Middleware
     byte incServiceIndex();
     byte decServiceIndex();
     void setFilterPids();
-    int  filterPids[ NUM_PID_TO_PROCESS ];
+    IDENTIFIER_INT filterPids[ NUM_PID_TO_PROCESS ];
     void updateBTSensors( pid *pid );
 };
 
@@ -51,16 +52,24 @@ void ServiceCall::tick()
 
 
 Message ServiceCall::process(Message msg){
-
+  
   // Process service call responses
   for( int i=*index; i<*index+NUM_PID_TO_PROCESS; i++ ){
 
     struct pid *pid = &cbt_settings.pids[i];
-    if( pid->txd[0] == 0 && pid->txd[1] == 0 )
-      continue;
 
+    #ifdef SUPPORTS_29BIT
+      if( pid->txd[0] == 0 && pid->txd[1] == 0 && pid->txd[2] == 0 && pid->txd[3] == 0 )
+        continue;
+      boolean resp_recd = msg.frame_id == (pid->txd[0]<<24)+(pid->txd[1]<<16)+(pid->txd[2]<<8)+pid->txd[3]+0x08;
+    #else
+      if( pid->txd[0] == 0 && pid->txd[1] == 0 )
+        continue;
+      boolean resp_recd = msg.frame_id == (pid->txd[0]<<8)+pid->txd[1]+0x08;
+    #endif
+        
     // If the PID returned is 8 higher than the request pid we've recieved a response
-    if(msg.frame_id == ((pid->txd[0]<<8)+pid->txd[1]+0x08) ){
+    if(resp_recd) {
 
       // Match RXF
       int rxfi = 0;
@@ -188,7 +197,11 @@ void ServiceCall::setFilterPids()
   byte ii = 0;
   for( int i=*index; i<*index+NUM_PID_TO_PROCESS; i++ ){
     // Add 8 to TXD message ID, this is the ID that the response will use
-    filterPids[ii] = int((cbt_settings.pids[i].txd[0] << 8) + cbt_settings.pids[i].txd[1]) + 0x08;
+    #ifdef SUPPORTS_29BIT
+      filterPids[ii] = IDENTIFIER_INT ((cbt_settings.pids[i].txd[0] << 24) + (cbt_settings.pids[i].txd[1] << 16) + (cbt_settings.pids[i].txd[2] << 8) + cbt_settings.pids[i].txd[3]) + 0x08;
+    #else
+      filterPids[ii] = IDENTIFIER_INT ((cbt_settings.pids[i].txd[0] << 8) + cbt_settings.pids[i].txd[1]) + 0x08;
+    #endif
     ii++;
   }
 
@@ -209,19 +222,35 @@ void ServiceCall::sendNextServiceCall( struct pid pid[] ){
   */
   for( int i=*index; i<*index+NUM_PID_TO_PROCESS; i++ ){
 
-    // if( pid[i].txd[0] == 0 && pid[i].txd[1] == 0 ) // Aborts if we have no PID
-    if( pid[i].txd[2] == 0 || pid[i].busId < 1 )      // Aborts if we have no service call data. Allows us to match on passive PIDs
-      continue;
-
-    Message msg;
-    msg.busId = pid[i].busId;
-    msg.frame_id = (pid[i].txd[0] << 8) + pid[i].txd[1];
-
-    int ii = 0;
-    while( ii <= 5 && pid[i].txd[ii+2] != 0 ){
-      msg.frame_data[ii+1] = pid[i].txd[ii+2];
-      ii++;
-    }
+    #ifdef SUPPORTS_29BIT
+      // if( pid[i].txd[0] == 0 && pid[i].txd[1] == 0 ) // Aborts if we have no PID
+      if( pid[i].txd[4] == 0 || pid[i].busId < 1 )      // Aborts if we have no service call data. Allows us to match on passive PIDs
+        continue;
+  
+      Message msg;
+      msg.busId = pid[i].busId;
+      msg.frame_id = (pid[i].txd[0] << 24) + (pid[i].txd[1] << 16) + (pid[i].txd[2] << 8) + pid[i].txd[3];
+  
+      int ii = 0;
+      while( ii <= 5 && pid[i].txd[ii+4] != 0 ){
+        msg.frame_data[ii+1] = pid[i].txd[ii+4];
+        ii++;
+      }
+    #else
+      // if( pid[i].txd[0] == 0 && pid[i].txd[1] == 0 ) // Aborts if we have no PID
+      if( pid[i].txd[2] == 0 || pid[i].busId < 1 )      // Aborts if we have no service call data. Allows us to match on passive PIDs
+        continue;
+  
+      Message msg;
+      msg.busId = pid[i].busId;
+      msg.frame_id = (pid[i].txd[0] << 8) + pid[i].txd[1];
+  
+      int ii = 0;
+      while( ii <= 5 && pid[i].txd[ii+2] != 0 ){
+        msg.frame_data[ii+1] = pid[i].txd[ii+2];
+        ii++;
+      }
+    #endif
 
     msg.frame_data[0] = ii;
 
