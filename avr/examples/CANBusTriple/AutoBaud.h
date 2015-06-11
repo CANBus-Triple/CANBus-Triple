@@ -44,7 +44,7 @@ int AutoBaud::baudDetect(byte busId, Stream* activeSerial){
   int rateFound = 0;
   for( int rateIndex = 0; rateIndex < 9; rateIndex++ ){
     
-    activeSerial->print(F("{\"event\":\"autobaudTest\", \"rate\":"));
+    activeSerial->print(F("{\"event\"':\"autobaudTest\", \"rate\":"));
     activeSerial->print(rates[rateIndex]);
     activeSerial->println("}");
     
