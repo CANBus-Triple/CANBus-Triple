@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.4.4"
+    #define BUILD_VERSION "0.4.5"
 #endif
 // #define SLEEP_ENABLE
 
@@ -37,8 +37,6 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 byte rx_status;
 QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
-
-
 
 
 /*
@@ -143,9 +141,6 @@ void setup(){
     delay(50);
   }
 
-
-
-
   // wdt_enable(WDTO_1S);
 
 }
@@ -199,13 +194,10 @@ void loop() {
   }
 
 
-
-
   // Pet the dog
   // wdt_reset();
 
 } // End loop()
-
 
 
 /*
@@ -243,7 +235,6 @@ boolean sendMessage( Message msg, CANBus bus ){
   return true;
 
 }
-
 
 
 /*
@@ -292,7 +283,3 @@ void processMessage( Message msg ){
     writeQueue.push( msg );
 
 }
-
-
-
-
