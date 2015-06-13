@@ -1,7 +1,7 @@
 
 
-
 #include <avr/eeprom.h>
+#include <CANBus.h>
 
 struct pid {
   byte busId;
@@ -16,20 +16,21 @@ struct pid {
 
 struct busConfig {
   int baud;
+  CANMode mode;
 };
 
 struct cbt_settings {
   byte displayEnabled;
   byte firstboot;
   byte displayIndex;
-  struct busConfig busCfg[3];
+  struct busConfig busCfg[3];  // 4bytes x 3 = 12bytes
   byte hwselftest;
   byte placeholder4;
   byte placeholder5;
   byte placeholder6;
   byte placeholder7;
-  struct pid pids[8];
-  byte padding[256];
+  struct pid pids[8];  // 34bytes x 8 pids = 272bytes
+  byte padding[220];  // 512bytes - 292 bytes
 } cbt_settings;
 
 
@@ -43,6 +44,8 @@ class Settings
    const static int pidLength = 8;
    static void setBaudRate(byte busId, int rate);
    static int getBaudRate(byte busId);
+   static void setCanMode(byte busId, int mode);
+   static CANMode getCanMode(byte busId);
 };
 
 
@@ -73,6 +76,19 @@ int Settings::getBaudRate(byte busId){
   return cbt_settings.busCfg[busId-1].baud;
 }
 
+void Settings::setCanMode(byte busId, int mode){
+  if( (busId < 1 || busId > 3)) return;
+
+  cbt_settings.busCfg[busId-1].mode = (CANMode) mode;
+  save(&cbt_settings);
+}
+
+CANMode Settings::getCanMode(byte busId){
+  if( (busId < 1 || busId > 3)) return UNKNOWN;
+
+  return cbt_settings.busCfg[busId-1].mode;
+}
+
 
 void Settings::clear()
 {
@@ -90,9 +106,9 @@ void Settings::firstbootSetup()
     1, // firstboot
     0, // displayIndex
     {
-      { 125 },
-      { 125 },
-      { 125 }
+      { 125, NORMAL },
+      { 125, NORMAL },
+      { 125, NORMAL }
     },
     0, // hwselftest
     0, // placeholder4

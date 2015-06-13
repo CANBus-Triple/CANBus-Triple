@@ -152,8 +152,8 @@ CNF3=b'00000010'=0x02 = SOF = 0  & WAKFIL = 0 & PS2 = 3
 #define MERRF       0x80
 
 
-
 #include "Arduino.h"
+
 
 struct MessageNew {
     byte length;
@@ -164,7 +164,8 @@ struct MessageNew {
     bool dispatch;
 };
 
-enum CANMode {CONFIGURATION,NORMAL,SLEEP,LISTEN,LOOPBACK};
+enum CANMode {CONFIGURATION,NORMAL,SLEEP,LISTEN,LOOPBACK,UNKNOWN};
+
 
 class CANBus
 {
@@ -210,6 +211,8 @@ public:
     void writeRegister( int addr, byte value );
     void writeRegister( int addr, byte value, byte value2 );
 
+    char readBuffer(byte buffer);
+    void writeBuffer(byte buffer, byte value);
 
     // byte readTXBNCTRL(int bufferid);
 
