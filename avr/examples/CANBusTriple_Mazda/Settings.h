@@ -91,7 +91,7 @@ void Settings::firstbootSetup()
     0, // displayIndex
     {
       { 125 },
-      { 125 },
+      { 500 },
       { 125 }
     },
     0, // hwselftest

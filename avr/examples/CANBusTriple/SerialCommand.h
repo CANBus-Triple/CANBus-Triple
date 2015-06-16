@@ -115,7 +115,6 @@ class SerialCommand : public Middleware
 
 byte mwCommandIndex = 0;
 int byteCount = 0;
-unsigned long lastBluetoothRX = millis();
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
@@ -138,6 +137,8 @@ SerialCommand::SerialCommand( QueueArray<Message> *q )
   busLogEnabled = 0;               // Start with all busses logging disabled
   passthroughMode = false;
   activeSerial = &Serial;
+
+  lastBluetoothRX = 0;
 
 }
 
@@ -534,7 +535,7 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( F("\", \"status\":\""));
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
-  activeSerial->print( channel.readRegister(EFLG), HEX ); 
+  activeSerial->print( channel.readRegister(EFLG), HEX );
   if( activeSerial == &Serial ){
     activeSerial->print( F("\", \"errorText\":\""));
     printEFLG(channel);
@@ -605,12 +606,12 @@ void SerialCommand::btDelay(){
 
 
 bool SerialCommand::btRateLimit(){
-  
-  if( lastBluetoothRX + 30 < millis() ){
+
+  if( millis() > lastBluetoothRX + 50 ){
     lastBluetoothRX = millis();
     return false;
   }else
-     return true;
+    return true;
   
 }
 
