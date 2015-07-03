@@ -115,6 +115,7 @@ class SerialCommand : public Middleware
 
 byte mwCommandIndex = 0;
 int byteCount = 0;
+unsigned long lastBluetoothRX = millis();
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
