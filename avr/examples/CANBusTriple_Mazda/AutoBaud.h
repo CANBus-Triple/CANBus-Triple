@@ -45,7 +45,7 @@ int AutoBaud::baudDetect(byte busId, Stream* activeSerial){
     
     activeSerial->print(F("{\"event\":\"autobaudTest\", \"rate\":"));
     activeSerial->print(rates[rateIndex]);
-    activeSerial->println("}");
+    activeSerial->println(F("}"));
 
     // reset
     // channel.reset();
@@ -83,7 +83,7 @@ int AutoBaud::baudDetect(byte busId, Stream* activeSerial){
   
   activeSerial->print(F("{\"event\":\"autobaudComplete\", \"rate\":"));
   activeSerial->print(rateFound);
-  activeSerial->println("}");
+  activeSerial->println(F("}"));
 
   // Save new baud rate to eeprom settings
   if(rateFound)
