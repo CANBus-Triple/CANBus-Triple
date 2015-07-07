@@ -32,16 +32,19 @@ class MazdaLED : public Middleware
     unsigned int animationCounter;
     char* currentLcdString();
     void commandHandler(byte*, int);
+    static int sweepGauges;
 };
 
 
-
+int MazdaLED::sweepGauges = 8000;
 
 
 MazdaLED::MazdaLED( QueueArray<Message> *q, SerialCommand *serialCommand )
 {
   mainQueue = q;
   enabled = true;
+
+  
 
   // Register a serial command callback handler
   serialCommand->registerCommand(0x16, this);
@@ -83,13 +86,39 @@ void MazdaLED::commandHandler(byte* bytes, int length)
 
 void MazdaLED::tick()
 {
-  if(!enabled) return;
+  if(!enabled) return; 
 
   // New LED update CAN message for fast updates
   // check stockOverrideTimer, no need to do fast updates while stock override is active
   if( (updateCounter+fastUpdateDelay) < millis() && stockOverrideTimer < millis() ){
     pushNewMessage();
-    updateCounter = millis();
+    updateCounter = millis();  
+  }
+
+  /*
+   *  Gauge Sweep
+   */
+  if( MazdaLED::sweepGauges > 800 ){
+    MazdaLED::sweepGauges -= 2;
+
+    Message msg;
+    msg.busId = 2;
+    msg.frame_id = 0x201;
+    msg.frame_data[0] = sweepGauges >> 8;
+    msg.frame_data[1] = sweepGauges & 0xFF;
+    msg.frame_data[2] = 0x7D;
+    msg.frame_data[3] = 0xAA;
+    msg.frame_data[4] = (sweepGauges*4) >> 8;
+    msg.frame_data[5] = (sweepGauges*4) & 0xFF;
+    msg.frame_data[6] = 1;
+    msg.frame_data[7] = 0x00;
+    msg.length = 8;
+    msg.dispatch = true;
+    mainQueue->push(msg);
+
+    Serial.write(sweepGauges);
+//    Serial.write(msg.frame_data[0]);
+//    Serial.write(msg.frame_data[1]);
   }
 
 }

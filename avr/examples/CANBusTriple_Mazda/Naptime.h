@@ -173,6 +173,10 @@ void Naptime::tick()
     // Re-enable the watchdog
     // wdt_enable(WDTO_1S);
 
+    // Sweep Gauges
+    delay(500);
+    MazdaLED::sweepGauges = 8000;
+
     Naptime::reset();
   }
 
