@@ -89,10 +89,9 @@ case 50:
 		break;
 
 case 83:
-        // TODO
-        config0 = 0x00;
-        config1 = 0x00;
-        config2 = 0x00;
+        config0 = 0x03;
+        config1 = 0xBE;
+        config2 = 0x07;
         break;
 
 case 100:
