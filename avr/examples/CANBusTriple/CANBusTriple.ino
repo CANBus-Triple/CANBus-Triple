@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.4.5"
+    #define BUILD_VERSION "0.4.6"
 #endif
 // #define SLEEP_ENABLE
 
