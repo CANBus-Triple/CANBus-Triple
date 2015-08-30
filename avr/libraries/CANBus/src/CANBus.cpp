@@ -89,10 +89,9 @@ case 50:
         break;
 
 case 83:
-        // TODO
-        config0 = 0x00;
-        config1 = 0x00;
-        config2 = 0x00;
+        config0 = 0x03;
+        config1 = 0xBE;
+        config2 = 0x07;
         break;
 
 case 100:
@@ -178,6 +177,15 @@ bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
     byte config1 = (((SJW-1) << 6) | BRP);
     byte config2 = ((BTLMODE << 7) | (SAM << 6) | ((PHSEG1-1) << 3) | (PRSEG-1));
     byte config3 = (B00000000 | (PHSEG2-1));
+    
+    // Hard coded configs
+    switch(bitRate){
+        case 83:
+            config1 = 0x03;
+            config2 = 0xBE;
+            config3 = 0x07;
+        break;
+    }
 
     this->writeRegister(CNF1, config1);
     this->writeRegister(CNF2, config2);

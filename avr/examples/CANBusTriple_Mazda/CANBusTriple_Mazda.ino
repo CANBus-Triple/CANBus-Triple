@@ -57,7 +57,7 @@ Middleware *activeMiddleware[] = {
   new ChannelSwap(),
   mazdaLed,
   serviceCall,
-  // new Naptime(0x0472, serialCommand),
+  new Naptime(0x0472, serialCommand),
   new MazdaWheelButton(mazdaLed, serviceCall)
 };
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );

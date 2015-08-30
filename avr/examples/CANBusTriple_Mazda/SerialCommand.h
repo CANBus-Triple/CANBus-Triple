@@ -143,6 +143,7 @@ SerialCommand::SerialCommand( QueueArray<Message> *q )
   busLogEnabled = 0;               // Start with all busses logging disabled
   passthroughMode = false;
   activeSerial = &Serial;
+  lastBluetoothRX = millis();
 }
 
 
@@ -642,12 +643,11 @@ void SerialCommand::btDelay()
 
 bool SerialCommand::btRateLimit()
 {
-  if ( lastBluetoothRX + 30 < millis() ){
+  if ( millis() > lastBluetoothRX + 50 ) {
     lastBluetoothRX = millis();
     return false;
-  }else
-     return true;
-  
+  } else
+    return true;
 }
 
 
