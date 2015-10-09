@@ -17,5 +17,10 @@ setRxInt	KEYWORD2
 bitModify	KEYWORD2
 setFilter	KEYWORD2
 clearFilters	KEYWORD2
+writeRegister   KEYWORD2
+transmitBuffer  KEYWORD2
+readFullFrame   KEYWORD2
+readStatus  KEYWORD2
+loadFullFrame   KEYWORD2
 init	KEYWORD2
 tick	KEYWORD2

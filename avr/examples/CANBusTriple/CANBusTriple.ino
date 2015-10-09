@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.5.1"
+    #define BUILD_VERSION "0.5.2"
 #endif
 // #define SLEEP_ENABLE
 
@@ -109,7 +109,6 @@ void setup()
   CANBus1.bitModify(CNF2, 0x20, 0x20); // Enable wake-up filter
   CANBus1.clearFilters();
   CANBus1.setMode(cbt_settings.busCfg[0].mode);
-  // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
 
   CANBus2.begin();
   CANBus2.setClkPre(1);
@@ -118,7 +117,6 @@ void setup()
   CANBus2.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
   CANBus2.setMode(cbt_settings.busCfg[1].mode);
-  // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
 
   CANBus3.begin();
   CANBus3.setClkPre(1);
@@ -127,9 +125,8 @@ void setup()
   CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus3.clearFilters();
   CANBus3.setMode(cbt_settings.busCfg[2].mode);
-  // attachInterrupt(CAN3INT, handleInterrupt3, LOW);
 
-  for (int b = 0; b<5; b++) {
+  for(int l = 0; l < 5; l++) {
     digitalWrite( BOOT_LED, HIGH );
     delay(50);
     digitalWrite( BOOT_LED, LOW );
@@ -188,30 +185,13 @@ boolean sendMessage( Message msg, CANBus bus )
 {
   if( msg.dispatch == false ) return true;
 
-  digitalWrite( BOOT_LED, HIGH );
-
   int ch = bus.getNextTxBuffer();
+  if (ch < 0 || ch > 2) return false; // All TX buffers full
 
-  switch( ch ){
-    case 0:
-      bus.load_ff_0( msg.length, msg.frame_id, msg.frame_data );
-      bus.send_0();
-      break;
-    case 1:
-      bus.load_ff_1( msg.length, msg.frame_id, msg.frame_data );
-      bus.send_1();
-      break;
-    case 2:
-      bus.load_ff_2( msg.length, msg.frame_id, msg.frame_data );
-      bus.send_2();
-      break;
-    default:
-      // All TX buffers full
-      return false;
-      break;
-  }
-
-  digitalWrite( BOOT_LED, LOW );
+  digitalWrite(BOOT_LED, HIGH);
+  bus.loadFullFrame(ch, msg.length, msg.frame_id, msg.frame_data );
+  bus.transmitBuffer(ch);
+  digitalWrite(BOOT_LED, LOW);
 
   return true;
 }
@@ -220,34 +200,24 @@ boolean sendMessage( Message msg, CANBus bus )
 /*
 *  Read Can Controller Buffer
 */
-void readBus( CANBus bus ){
+void readBus( CANBus bus )
+{
+  byte rx_status = bus.readStatus();
+  if (rx_status & 0x1) readMsgFromBuffer(bus, 0, rx_status);
+  if (rx_status & 0x2) readMsgFromBuffer(bus, 1, rx_status);
+}
 
+
+void readMsgFromBuffer(CANBus bus, byte bufferId, byte rx_status)
+{
   // Abort if readQueue is full
-  if( readQueue.isFull() ) return;
+  if (readQueue.isFull()) return;
 
-  rx_status = bus.readStatus();
-
-  // Check buffer RX0
-  if( (rx_status & 0x1) == 0x1 ){
-    Message msg;
-    msg.busStatus = rx_status;
-    msg.busId = bus.busId;
-    bus.readDATA_ff_0( &msg.length, msg.frame_data, &msg.frame_id );
-    readQueue.push(msg);
-  }
-
-  // Abort if readQueue is full
-  if( readQueue.isFull() ) return;
-
-  // Check buffer RX1
-  if( (rx_status & 0x2) == 0x2 ) {
-    Message msg;
-    msg.busStatus = rx_status;
-    msg.busId = bus.busId;
-    bus.readDATA_ff_1( &msg.length, msg.frame_data, &msg.frame_id );
-    readQueue.push(msg);
-  }
-
+  Message msg;
+  msg.busStatus = rx_status;
+  msg.busId = bus.busId;
+  bus.readFullFrame(bufferId, &msg.length, msg.frame_data, &msg.frame_id );
+  readQueue.push(msg);  
 }
 
 

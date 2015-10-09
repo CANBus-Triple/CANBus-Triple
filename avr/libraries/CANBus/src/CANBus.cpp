@@ -350,128 +350,55 @@ void CANBus::setMode(CANMode mode)
 }
 
 
-void CANBus::send_0()//transmits buffer 0
+void CANBus::transmitBuffer(int bufferId) // Transmits buffer 
 {
+    byte bufAddr;
+    switch(bufferId) {
+        case 0:
+            bufAddr = SEND_TX_BUF_0;
+            break;
+        case 1:
+            bufAddr = SEND_TX_BUF_1;
+            break;
+        case 2:
+            bufAddr = SEND_TX_BUF_2;
+            break;
+        default:
+            return;
+            break;
+    }
 
-    //delays removed from SEND command(pcruce_at_igpp.ucla.edu)
-    //In testing we found that any lost data was from PC<->Serial Delays,
-    //Not CAN Controller/AVR delays.  Thus removing the delays at this level
-    //allows maximum flexibility and performance.
+    // Delays removed from SEND command(pcruce_at_igpp.ucla.edu)
+    // In testing we found that any lost data was from PC<->Serial Delays,
+    // not CAN Controller/AVR delays. Thus removing the delays at this level
+    // allows maximum flexibility and performance.
     digitalWrite(_ss, LOW);
-    SPI.transfer(SEND_TX_BUF_0);
+    SPI.transfer(bufAddr);
     digitalWrite(_ss, HIGH);
 }
 
 
-void CANBus::send_1()//transmits buffer 1
+// Extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
+// It is the responsibility of the user to allocate memory for output.
+// If you don't know what length the bus frames will be, data_out should be 8-bytes
+void CANBus::readFullFrame(byte buffer_id, byte* length_out, byte *data_out, unsigned short *id_out)
 {
-    digitalWrite(_ss, LOW);
-    SPI.transfer(SEND_TX_BUF_1);
-    digitalWrite(_ss, HIGH);
-}
-
-
-void CANBus::send_2()//transmits buffer 2
-{
-    digitalWrite(_ss, LOW);
-    SPI.transfer(SEND_TX_BUF_2);
-    digitalWrite(_ss, HIGH);
-}
-
-
-char CANBus::readBuffer(byte buffer)
-{
-    char retVal;
-    digitalWrite(_ss, LOW);
-    delay(1);
-    SPI.transfer(buffer);
-    retVal = SPI.transfer(0xFF);
-    delay(1);
-    digitalWrite(_ss, HIGH);
-    delay(1);
-    return retVal;    
-}
-
-
-void CANBus::writeBuffer(byte buffer, byte value)
-{
-    digitalWrite(_ss, LOW);
-    delay(1);
-    SPI.transfer(buffer);
-    SPI.transfer(value);
-    delay(1);
-    digitalWrite(_ss, HIGH);
-    delay(1);    
-}
-
-
-char CANBus::readID_0()//reads ID in recieve buffer 0
-{
-    return this->readBuffer(READ_RX_BUF_0_ID);
-}
-
-
-char CANBus::readID_1()//reads ID in reciever buffer 1
-{
-    return this->readBuffer(READ_RX_BUF_1_ID);
-}
-
-
-char CANBus::readDATA_0()//reads DATA in recieve buffer 0
-{
-    return this->readBuffer(READ_RX_BUF_0_DATA);
-}
-
-char CANBus::readDATA_1()//reads data in recieve buffer 1
-{
-    return this->readBuffer(READ_RX_BUF_1_DATA);
-}
-
-
-//extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
-//It is the responsibility of the user to allocate memory for output.
-//If you don't know what length the bus frames will be, data_out should be 8-bytes
-void CANBus::readDATA_ff_0(byte* length_out,byte *data_out,unsigned short *id_out){
-
-    byte len,i;
-    unsigned short id_h,id_l;
+    byte len, i;
+    unsigned short id_h, id_l;
 
     digitalWrite(_ss, LOW);
-    SPI.transfer(READ_RX_BUF_0_ID);
+    SPI.transfer((buffer_id == 0)? READ_RX_BUF_0_ID : READ_RX_BUF_1_ID);
     id_h = (unsigned short) SPI.transfer(0xFF); //id high
     id_l = (unsigned short) SPI.transfer(0xFF); //id low
-    SPI.transfer(0xFF); //extended id high(unused)
-    SPI.transfer(0xFF); //extended id low(unused)
+    SPI.transfer(0xFF); // Extended id high(unused)
+    SPI.transfer(0xFF); // Extended id low(unused)
     len = (SPI.transfer(0xFF) & 0x0F); //data length code
-    for (i = 0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         data_out[i] = SPI.transfer(0xFF);
     }
     digitalWrite(_ss, HIGH);
     (*length_out) = len;
-    (*id_out) = ((id_h << 3) + ((id_l & 0xE0) >> 5)); //repack identifier
-
-}
-
-
-void CANBus::readDATA_ff_1(byte* length_out,byte *data_out,unsigned short *id_out){
-
-    byte id_h,id_l,len,i;
-
-    digitalWrite(_ss, LOW);
-    SPI.transfer(READ_RX_BUF_1_ID);
-    id_h = SPI.transfer(0xFF); //id high
-    id_l = SPI.transfer(0xFF); //id low
-    SPI.transfer(0xFF); //extended id high(unused)
-    SPI.transfer(0xFF); //extended id low(unused)
-    len = (SPI.transfer(0xFF) & 0x0F); //data length code
-    for (i = 0;i<len;i++) {
-        data_out[i] = SPI.transfer(0xFF);
-    }
-    digitalWrite(_ss, HIGH);
-
-    (*length_out) = len;
-    (*id_out) = ((((unsigned short) id_h) << 3) + ((id_l & 0xE0) >> 5)); //repack identifier
-
+    (*id_out) = ((id_h << 3) + ((id_l & 0xE0) >> 5)); // Repack identifier
 }
 
 
@@ -578,98 +505,38 @@ byte CANBus::readTXBNCTRL(int bufferid)
 */
 
 
-void CANBus::load_0(byte identifier, byte data)//loads ID and DATA into transmit buffer 0
+void CANBus::loadFullFrame(byte bufferId, byte length, unsigned short identifier, byte *data)
 {
-    this->writeBuffer(LOAD_TX_BUF_0_ID, identifier);
-    this->writeBuffer(LOAD_TX_BUF_0_DATA, data);
-}
+    byte i, id_high, id_low, bufAddr;
 
+    switch(bufferId) {
+        case 0:
+            bufAddr = LOAD_TX_BUF_0_ID;
+            break;
+        case 1:
+            bufAddr = LOAD_TX_BUF_1_ID;
+            break;
+        case 2:
+            bufAddr = LOAD_TX_BUF_2_ID;
+            break;
+        default:
+            return;
+            break;
+    }
 
-void CANBus::load_1(byte identifier, byte data)//loads ID and DATA into transmit buffer 1
-{
-    this->writeBuffer(LOAD_TX_BUF_1_ID, identifier);
-    this->writeBuffer(LOAD_TX_BUF_1_DATA, data);
-}
-
-
-void CANBus::load_2(byte identifier, byte data)//loads ID and DATA into transmit buffer 2
-{
-    this->writeBuffer(LOAD_TX_BUF_2_ID, identifier);
-    this->writeBuffer(LOAD_TX_BUF_2_DATA, data);    
-}
-
-
-void CANBus::load_ff_0(byte length,unsigned short identifier,byte *data)
-{
-
-    byte i,id_high,id_low;
-
-    //generate id bytes before SPI write
+    // Generate id bytes before SPI write
     id_high = (byte) (identifier >> 3);
     id_low = (byte) ((identifier << 5) & 0x00E0);
 
     digitalWrite(_ss, LOW);
-    SPI.transfer(LOAD_TX_BUF_0_ID);
-    SPI.transfer(id_high); //identifier high bits
-    SPI.transfer(id_low); //identifier low bits
-    SPI.transfer(0x00); //extended identifier registers(unused)
+    SPI.transfer(bufAddr);
+    SPI.transfer(id_high); // Identifier high bits
+    SPI.transfer(id_low); // Identifier low bits
+    SPI.transfer(0x00); // Extended identifier registers (unused)
     SPI.transfer(0x00);
     SPI.transfer(length);
-    for (i=0;i<length;i++) { //load data buffer
+    for (i = 0; i < length; i++) { // Load data buffer
         SPI.transfer(data[i]);
     }
-
     digitalWrite(_ss, HIGH);
-
-}
-
-
-void CANBus::load_ff_1(byte length,unsigned short identifier,byte *data)
-{
-
-    byte i,id_high,id_low;
-
-    //generate id bytes before SPI write
-    id_high = (byte) (identifier >> 3);
-    id_low = (byte) ((identifier << 5) & 0x00E0);
-
-    digitalWrite(_ss, LOW);
-    SPI.transfer(LOAD_TX_BUF_1_ID);
-    SPI.transfer(id_high); //identifier high bits
-    SPI.transfer(id_low); //identifier low bits
-    SPI.transfer(0x00); //extended identifier registers(unused)
-    SPI.transfer(0x00);
-    SPI.transfer(length);
-    for (i=0;i<length;i++) { //load data buffer
-        SPI.transfer(data[i]);
-    }
-
-    digitalWrite(_ss, HIGH);
-
-}
-
-
-void CANBus::load_ff_2(byte length,unsigned short identifier,byte *data)
-{
-
-    byte i,id_high,id_low;
-
-    //generate id bytes before SPI write
-    id_high = (byte) (identifier >> 3);
-    id_low = (byte) ((identifier << 5) & 0x00E0);
-
-    digitalWrite(_ss, LOW);
-
-    SPI.transfer(LOAD_TX_BUF_2_ID);
-    SPI.transfer(id_high); //identifier high bits
-    SPI.transfer(id_low); //identifier low bits
-    SPI.transfer(0x00); //extended identifier registers(unused)
-    SPI.transfer(0x00);
-    SPI.transfer(length); //data length code
-    for (i=0;i<length;i++) { //load data buffer
-        SPI.transfer(data[i]);
-    }
-
-    digitalWrite(_ss, HIGH);
-
 }

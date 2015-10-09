@@ -206,30 +206,15 @@ public:
     // Interrupt control register methods
     void setRxInt(bool enable);
 
-
     byte readRegister( int addr );
     void writeRegister( int addr, byte value );
     void writeRegister( int addr, byte value, byte value2 );
 
-    char readBuffer(byte buffer);
-    void writeBuffer(byte buffer, byte value);
+	void transmitBuffer(int bufferId); // Request to transmit buffer X
 
-    // byte readTXBNCTRL(int bufferid);
-
-	void send_0();//request to transmit buffer X
-	void send_1();
-	void send_2();
-
-	char readID_0();//read ID/DATA of recieve buffer X
-	char readID_1();
-
-	char readDATA_0();
-	char readDATA_1();
-
-	//extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
-	//data_out should be array of 8-bytes or frame length.
-	void readDATA_ff_0(byte* length_out,byte *data_out,unsigned short *id_out);
-	void readDATA_ff_1(byte* length_out,byte *data_out,unsigned short *id_out);
+	// Extending CAN data read to full frames (pcruce_at_igpp.ucla.edu)
+	// Data_out should be array of 8-bytes or frame length.
+    void readFullFrame(byte buffer_id, byte* length_out, byte *data_out, unsigned short *id_out);
 
 	// Adding can to read status register (pcruce_at_igpp.ucla.edu)
 	// Can be used to determine whether a frame was received.
@@ -240,16 +225,10 @@ public:
     // byte readControl();
     // byte readErrorRegister();
 
-    void load_0(byte identifier, byte data);//load transmit buffer X
-	void load_1(byte identifier, byte data);
-	void load_2(byte identifier, byte data);
-
-	//extending CAN write to full frame(pcruce_at_igpp.ucla.edu)
-	//Identifier should be a value between 0 and 2^11-1, longer identifiers will be truncated(ie does not support extended frames)
-	void load_ff_0(byte length,unsigned short identifier,byte *data);
-    void load_ff_1(byte length,unsigned short identifier,byte *data);
-	void load_ff_2(byte length,unsigned short identifier,byte *data);
-
+	// Extending CAN write to full frame (pcruce_at_igpp.ucla.edu)
+	// Identifier should be a value between 0 and 2^11-1, longer identifiers will be truncated
+    // (i.e. does not support extended frames)
+	void loadFullFrame(byte bufferId, byte length, unsigned short identifier, byte *data);
 };
 
 #endif
