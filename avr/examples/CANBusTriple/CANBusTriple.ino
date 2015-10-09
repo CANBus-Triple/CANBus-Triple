@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.5.2"
+    #define BUILD_VERSION "0.6.0"
 #endif
 // #define SLEEP_ENABLE
 
@@ -64,7 +64,6 @@ void setup()
   */
   serviceCall->setFilterPids();
 
-
   Serial.begin( 115200 ); // USB
   Serial1.begin( 57600 ); // UART
 
@@ -101,30 +100,15 @@ void setup()
 
 
   // Setup CAN Busses
-  CANBus1.begin();
-  CANBus1.setClkPre(1);
-  CANBus1.baudConfig(cbt_settings.busCfg[0].baud);
-  CANBus1.setRxInt(true);
-  CANBus1.bitModify(RXB0CTRL, 0x04, 0x04); // Set buffer rollover enabled
-  CANBus1.bitModify(CNF2, 0x20, 0x20); // Enable wake-up filter
-  CANBus1.clearFilters();
-  CANBus1.setMode(cbt_settings.busCfg[0].mode);
-
-  CANBus2.begin();
-  CANBus2.setClkPre(1);
-  CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
-  CANBus2.setRxInt(true);
-  CANBus2.bitModify(RXB0CTRL, 0x04, 0x04);
-  CANBus2.clearFilters();
-  CANBus2.setMode(cbt_settings.busCfg[1].mode);
-
-  CANBus3.begin();
-  CANBus3.setClkPre(1);
-  CANBus3.baudConfig(cbt_settings.busCfg[2].baud);
-  CANBus3.setRxInt(true);
-  CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
-  CANBus3.clearFilters();
-  CANBus3.setMode(cbt_settings.busCfg[2].mode);
+  for (int b = 0; b < 3; b++) {
+    busses[b].begin();
+    busses[b].setClkPre(1);
+    busses[b].baudConfig(cbt_settings.busCfg[b].baud);
+    busses[b].setRxInt(true);
+    busses[b].bitModify(RXB0CTRL, 0x04, 0x04); // Set buffer rollover enabled
+    busses[b].disableFilters();
+    busses[b].setMode(cbt_settings.busCfg[b].mode);
+  }
 
   for(int l = 0; l < 5; l++) {
     digitalWrite( BOOT_LED, HIGH );
@@ -150,26 +134,21 @@ void loop()
   if ( digitalRead(CAN2INT_D) == 0 ) readBus(CANBus2);
   if ( digitalRead(CAN3INT_D) == 0 ) readBus(CANBus3);
 
-
-  // Process message stack
-  if( !readQueue.isEmpty() && !writeQueue.isFull() ){
-    processMessage( readQueue.pop() );
+  // Process received CAN message through middleware
+  if (!readQueue.isEmpty()) {
+    Message msg = readQueue.pop();
+    for(int i = 0; i <= activeMiddlewareLength - 1; i++) msg = activeMiddleware[i]->process(msg);
+    if (msg.dispatch && !writeQueue.isFull()) writeQueue.push(msg);
   }
 
-
-  boolean success = true;
-  while( !writeQueue.isEmpty() && success ){
+  boolean error = false;
+  while(!writeQueue.isEmpty() && !error) {
 
     Message msg = writeQueue.pop();
-    CANBus channel = busses[msg.busId-1];
+    error = !sendMessage(msg, busses[msg.busId - 1]);
 
-    success = sendMessage( msg, channel );
-
-    if( !success ){
-      // TX Failure, add back to queue
-      writeQueue.push(msg);
-    }
-
+    // When TX Failure, add back to queue
+    if (error) writeQueue.push(msg);
   }
 
   // Pet the dog
@@ -218,18 +197,4 @@ void readMsgFromBuffer(CANBus bus, byte bufferId, byte rx_status)
   msg.busId = bus.busId;
   bus.readFullFrame(bufferId, &msg.length, msg.frame_data, &msg.frame_id );
   readQueue.push(msg);  
-}
-
-
-/*
-*  Process received CAN message through middleware
-*/
-void processMessage( Message msg ){
-
-  for(int i=0; i<=activeMiddlewareLength-1; i++)
-    msg = activeMiddleware[i]->process( msg );
-
-  if( msg.dispatch == true )
-    writeQueue.push( msg );
-
 }

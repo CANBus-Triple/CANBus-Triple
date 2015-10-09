@@ -33,6 +33,9 @@ Cmd  Bus  On/Off MsgId1 MsgId2
 0x03 0x01 0x01   0x290  0x291     // Enable logging on bus 1 and filter only messages 0x290 and 0x291
 0x03 0x01 0x00                    // Disable logging on bus 1
 
+                 MsgId1 Mask1 MsgId2 Mask2
+0x03 0x01 0x02   0x290  0xFFF 0x400  0xFF0  // Enable logging on Bus 1 filter messages 0x290 and 0x40* (0 in mask is a wildcard)
+0x03 0x01 0x02   0x000  0x000               // Enable logging on Bus 1 for ALL messages
 
 
 Set Bluetooth Message ID filter
@@ -109,8 +112,6 @@ private:
     char btMessageIdFilters[][2];
     boolean passthroughMode;
     byte busLogEnabled;
-    Message newMessage;
-    byte buffer[];
     void printEFLG(CANBus);
     int byteCount;
     void btDelay();
@@ -374,30 +375,43 @@ void SerialCommand::canMode()
 
 void SerialCommand::logCommand()
 {
-  byte cmd[6] = {0};
-  int bytesRead = getCommandBody( cmd, 6 );
+    byte cmd[8] = {0};
+    if (getCommandBody( cmd, 2 ) < 2) {
+        activeSerial->write(COMMAND_ERROR);
+        return;
+    }
+    int busId = cmd[0];
 
-  if( cmd[0] < 1 || cmd[0] > 3 ){
-    activeSerial->write(COMMAND_ERROR);
-    return;
-  }
-  CANBus bus = busses[ cmd[0]-1 ];
+    if( busId < 1 || busId > 3 ){
+        activeSerial->write(COMMAND_ERROR);
+        return;
+    }
+    CANBus bus = busses[busId - 1];
 
-  if( cmd[1] )
-    busLogEnabled |= 1 << (cmd[0]-1);
-  else
-    busLogEnabled &= ~(1 << (cmd[0]-1));
+    if( cmd[1] > 0 )
+        busLogEnabled |= 1 << (busId-1);
+    else
+        busLogEnabled &= ~(1 << (busId-1));
 
-  // Set filter if we got pids in the command
-  if( bytesRead > 2 ){
-
+    // Set optional filter    
     bus.setMode(CONFIGURATION);
-    bus.clearFilters();
-    if( cmd[2] + cmd[3] + cmd[4] + cmd[5] )
-      bus.setFilter( (cmd[2]<<8) + cmd[3], (cmd[4]<<8) + cmd[5] );
-    bus.setMode(Settings::getCanMode(cmd[0]));
-
-  }
+    switch(cmd[1]) {
+        case 1:
+            if (getCommandBody(cmd, 4) > 0)
+                bus.setFilter((cmd[0] << 8) + cmd[1], (cmd[2] << 8) + cmd[3]);
+            break;
+        case 2:
+        {
+            int bytesRead = getCommandBody( cmd, 8 );
+            int filter1 = (cmd[0] << 8) + cmd[1];
+            int mask1 = (cmd[2] << 8) + cmd[3];
+            int filter2 = (bytesRead > 4)? (cmd[4] << 8) + cmd[5] : filter1;
+            int mask2 = (bytesRead > 6)? (cmd[6] << 8) + cmd[7] : mask1;
+            bus.setFilterMask(filter1, mask1, filter2, mask2);
+            break;
+        }
+    }
+    bus.setMode(Settings::getCanMode(busId));
 
     activeSerial->write(COMMAND_OK);
     activeSerial->write(NEWLINE);

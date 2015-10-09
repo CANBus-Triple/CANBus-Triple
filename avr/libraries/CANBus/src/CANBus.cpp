@@ -237,37 +237,67 @@ int CANBus::getNextTxBuffer()
 }
 
 
-void CANBus::setFilter( int filter0, int filter1 ){
-    
-    byte SIDH = filter0 >> 3;
-    byte SIDL = filter0 << 5;
-    this->writeRegister(RXF0SIDH, SIDH, SIDL ); // RXB0
-    this->writeRegister(RXF2SIDH, SIDH, SIDL ); // RXB1
-
-    SIDH = filter1 >> 3;
-    SIDL = filter1 << 5;
-    this->writeRegister(RXF1SIDH, SIDH, SIDL ); // RXB0
-    this->writeRegister(RXF3SIDH, SIDH, SIDL ); // RXB1
-    this->writeRegister(RXF4SIDH, SIDH, SIDL ); // RXB1
-    this->writeRegister(RXF5SIDH, SIDH, SIDL ); // RXB1
-
-    // Set mask to match everything
-    /*
-    int combined = filter0 | filter1;
-    SIDH = combined >> 3;
-    SIDL = combined << 5;
-    */
-    SIDH = 0xFF >> 3;
-    SIDL = 0xFF << 5;
-    this->writeRegister(RXM0SIDH, SIDH, SIDL );
-    this->writeRegister(RXM1SIDH, SIDH, SIDL );
-
+void CANBus::setMask( int rxBufferId, int mask )
+{    
+    this->writeRegister11bit((rxBufferId == 1)? RXM1SIDH : RXM0SIDH, mask);
 }
 
 
-void CANBus::clearFilters(){
-    this->writeRegister(RXM0SIDH, 0, 0 );
-    this->writeRegister(RXM1SIDH, 0, 0 );
+void CANBus::setFilterSingle( int rxFilterId, int filter )
+{    
+    int filterAddr;
+    switch(rxFilterId) {
+        case 1:
+            filterAddr = RXF1SIDH;
+            break;
+        case 2:
+            filterAddr = RXF2SIDH;
+            break;
+        case 3:
+            filterAddr = RXF3SIDH;
+            break;
+        case 4:
+            filterAddr = RXF4SIDH;
+            break;
+        case 5:
+            filterAddr = RXF5SIDH;
+            break;
+        default:
+            filterAddr = RXF0SIDH;
+            break;
+    }
+    this->writeRegister11bit(filterAddr, filter);
+}
+
+
+void CANBus::setFilterMask( int filter0, int mask0, int filter1, int mask1 )
+{    
+    // Buffer RXB0 filters and mask    
+    this->setMask(0, mask0);
+    this->setFilterSingle(0, filter0);
+    this->setFilterSingle(1, filter0);
+
+    // Buffer RXB1 filters and mask
+    this->setMask(1, mask1);
+    this->setFilterSingle(2, filter1);
+    this->setFilterSingle(3, filter1);
+    this->setFilterSingle(4, filter1);
+    this->setFilterSingle(5, filter1);
+}
+
+
+void CANBus::setFilter( int filter0, int filter1 )
+{    
+    if (filter1 == 0) filter1 = filter0;
+    // Set mask to match all filter bits
+    this->setFilterMask( filter0, 0xFFFF, filter1, 0xFFFF );
+}
+
+
+void CANBus::disableFilters()
+{
+    this->setMask(0, 0);
+    this->setMask(1, 0);
 }
 
 
@@ -275,6 +305,13 @@ void CANBus::clearFilters(){
 void CANBus::setRxInt(bool enable)
 {
     this->bitModify(CANINTE, enable? 0x03 : 0x00, 0x03);
+}
+
+
+// Enable / Disable interrupt pin on CAN bus activity (while in SLEEP mode)
+void CANBus::setWakeupInt(bool enable)
+{
+    this->bitModify(CANINTE, enable? 0x40 : 0x00, 0x40);
 }
 
 
@@ -347,6 +384,12 @@ void CANBus::setMode(CANMode mode)
     }
 
     this->bitModify(CANCTRL, writeVal, 0xE0);
+}
+
+
+void CANBus::setWakeupFilter(bool enable)
+{
+    this->bitModify(CNF3, enable? 0x40 : 0x00, 0x40);
 }
 
 
@@ -437,14 +480,17 @@ void CANBus::writeRegister( int addr, byte value )
 }
 
 
-void CANBus::writeRegister( int addr, byte value, byte value2 )
+void CANBus::writeRegister11bit( int addr, int value )
 {
+    byte bReg1 = value >> 3;
+    byte bReg2 = value << 5;
+
     digitalWrite(_ss, LOW);
     delay(1);
     SPI.transfer(WRITE);
     SPI.transfer(addr);
-    SPI.transfer(value);
-    SPI.transfer(value2);
+    SPI.transfer(bReg1);
+    SPI.transfer(bReg2);
     delay(1);
     digitalWrite(_ss, HIGH);
     delay(1);

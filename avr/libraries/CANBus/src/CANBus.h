@@ -197,9 +197,19 @@ public:
     // Method to send CLKPRE (Clock output scaler) 1,2,4,8 available values.
     void setClkPre(int mode);
 
+    // Enable/Disable interrupt pin on CAN bus activity (while in SLEEP mode)
+    void setWakeupInt(bool enable);
+
+    // Enable/Disable Wakeup filter 
+    // (prevents the device from waking up due to short glitches on the CAN bus lines)
+    void setWakeupFilter(bool enable);
+
     // Set RX Filter registers
+    void setMask( int rxBufferId, int mask );
+    void setFilterSingle( int rxFilterId, int filter );
+    void setFilterMask( int filter0, int mask0, int filter1, int mask1 );
     void setFilter(int, int);
-    void clearFilters();
+    void disableFilters();
 
     int getNextTxBuffer();
 
@@ -208,7 +218,7 @@ public:
 
     byte readRegister( int addr );
     void writeRegister( int addr, byte value );
-    void writeRegister( int addr, byte value, byte value2 );
+    void writeRegister11bit( int addr, int value );
 
 	void transmitBuffer(int bufferId); // Request to transmit buffer X
 
