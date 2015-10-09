@@ -17,7 +17,7 @@ System Info and EEPROM
 0x01 0x10 0x03   Print Bus 3 Debug to Serial
 0x01 0x16        Reboot to bootloader
 
-
+ 
 Send CAN Packet
 ---------------
 Cmd    Bus id  PID    data 0-7                  length
