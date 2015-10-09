@@ -44,8 +44,6 @@ MazdaLED::MazdaLED( QueueArray<Message> *q, SerialCommand *serialCommand )
   mainQueue = q;
   enabled = true;
 
-  
-
   // Register a serial command callback handler
   serialCommand->registerCommand(0x16, this);
 

@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.4.6"
+    #define BUILD_VERSION "0.5.0"
 #endif
 // #define SLEEP_ENABLE
 
@@ -113,7 +113,7 @@ void setup(){
   CANBus1.bitModify(RXB0CTRL, 0x04, 0x04); // Set buffer rollover enabled
   CANBus1.bitModify(CNF2, 0x20, 0x20); // Enable wake-up filter
   CANBus1.clearFilters();
-  CANBus1.setMode(NORMAL);
+  CANBus1.setMode(cbt_settings.busCfg[0].mode);
   // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
 
   CANBus2.begin();
@@ -122,7 +122,7 @@ void setup(){
   CANBus2.setRxInt(true);
   CANBus2.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
-  CANBus2.setMode(NORMAL);
+  CANBus2.setMode(cbt_settings.busCfg[1].mode);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
 
   CANBus3.begin();
@@ -131,7 +131,7 @@ void setup(){
   CANBus3.setRxInt(true);
   CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus3.clearFilters();
-  CANBus3.setMode(NORMAL);
+  CANBus3.setMode(cbt_settings.busCfg[2].mode);
   // attachInterrupt(CAN3INT, handleInterrupt3, LOW);
 
   for (int b = 0; b<5; b++) {

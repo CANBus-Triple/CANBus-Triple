@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.4.5"
+    #define BUILD_VERSION "0.5.0"
 #endif
 // #define SLEEP_ENABLE
 
@@ -120,30 +120,32 @@ void setup(){
   CANBus1.bitModify(RXB0CTRL, 0x04, 0x04); // Set buffer rollover enabled
   CANBus1.bitModify(CNF2, 0x20, 0x20); // Enable wake-up filter
   CANBus1.clearFilters();
-  CANBus1.setMode(NORMAL);
+  CANBus1.setMode(cbt_settings.busCfg[0].mode);
   // attachInterrupt(CAN1INT, handleInterrupt1, LOW);
 
   CANBus2.begin();
+  CANBus2.setClkPre(1);
   CANBus2.baudConfig(cbt_settings.busCfg[1].baud);
   CANBus2.setRxInt(true);
   CANBus2.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus2.clearFilters();
-  CANBus2.setMode(LISTEN);
+  CANBus2.setMode(cbt_settings.busCfg[1].mode);
   // attachInterrupt(CAN2INT, handleInterrupt2, LOW);
 
   CANBus3.begin();
+  CANBus3.setClkPre(1);
   CANBus3.baudConfig(cbt_settings.busCfg[2].baud);
   CANBus3.setRxInt(true);
   CANBus3.bitModify(RXB0CTRL, 0x04, 0x04);
   CANBus3.clearFilters();
-  CANBus3.setMode(NORMAL);
+  CANBus3.setMode(cbt_settings.busCfg[2].mode);
   // attachInterrupt(CAN3INT, handleInterrupt3, LOW);
 
 
    // Setup CAN bus 2 filter
   CANBus2.setMode(CONFIGURATION);
   CANBus2.setFilter( serviceCall->filterPids[0], serviceCall->filterPids[1] );
-  CANBus2.setMode(NORMAL);
+  CANBus2.setMode(cbt_settings.busCfg[1].mode);
 
 
   for (int b = 0; b<5; b++) {
@@ -152,7 +154,6 @@ void setup(){
     digitalWrite( BOOT_LED, LOW );
     delay(50);
   }
-
 
   // wdt_enable(WDTO_1S);
 

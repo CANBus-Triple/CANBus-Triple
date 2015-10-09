@@ -4,18 +4,20 @@
 
 System Info and EEPROM
 ----------------------
-0x01 0x01        Print System Debug to Serial
-0x01 0x02        Dump eeprom value
-0x01 0x03        read and save eeprom
-0x01 0x04        restore eeprom to stock values
-0x01 0x08 0x01   Auto detect baud rate for bus 1 (handled by AutoBaud.h)
-0x01 0x08 0x02   Auto baud bus 2
-0x01 0x08 0x03   Auto baud bus 3
-0x01 0x09 0x01 N Set baud rate on bus 1 to N (N is 16 bits)
-0x01 0x10 0x01   Print Bus 1 Debug to Serial
-0x01 0x10 0x02   Print Bus 2 Debug to Serial
-0x01 0x10 0x03   Print Bus 3 Debug to Serial
-0x01 0x16        Reboot to bootloader
+0x01 0x01            Print System Debug to Serial
+0x01 0x02            Dump eeprom value
+0x01 0x03            read and save eeprom
+0x01 0x04            restore eeprom to stock values
+0x01 0x08 0x01       Auto detect baud rate for bus 1 (handled by AutoBaud.h)
+0x01 0x08 0x02       Auto baud bus 2
+0x01 0x08 0x03       Auto baud bus 3
+0x01 0x09 0x01 N     Set baud rate on bus 1 to N (N is 16 bits)
+0x01 0x0A BUS  MODE  Get CAN mode on bus BUS, or Set CAN mode MODE on bus BUS
+                     (CONFIGURATION = 0, NORMAL = 1, SLEEP = 2, LISTEN = 3, LOOPBACK = 4)
+0x01 0x10 0x01       Print Bus 1 Debug to Serial
+0x01 0x10 0x02       Print Bus 2 Debug to Serial
+0x01 0x10 0x03       Print Bus 3 Debug to Serial
+0x01 0x16            Reboot to bootloader
 
  
 Send CAN Packet
@@ -63,6 +65,7 @@ TODO: Implement this ^^^
 
 
 #include "Middleware.h"
+#include <CANBus.h>
 
 
 struct middleware_command {
@@ -97,6 +100,7 @@ class SerialCommand : public Middleware
     void dumpEeprom();
     void getAndSaveEeprom();
     void bitRate();
+    void canMode();
     void logCommand();
     void bluetooth();
     void setBluetoothFilter();
@@ -138,10 +142,9 @@ SerialCommand::SerialCommand( QueueArray<Message> *q )
   busLogEnabled = 0;               // Start with all busses logging disabled
   passthroughMode = false;
   activeSerial = &Serial;
-
   lastBluetoothRX = 0;
-
 }
+
 
 void SerialCommand::tick()
 {
@@ -154,7 +157,6 @@ void SerialCommand::tick()
     return;
   }
 
-
   if( Serial1.available() > 0 ){
     activeSerial = &Serial1;
     processCommand( Serial1.read() );
@@ -164,8 +166,8 @@ void SerialCommand::tick()
     activeSerial = &Serial;
     processCommand( Serial.read() );
   }
-
 }
+
 
 Message SerialCommand::process( Message msg )
 {
@@ -173,19 +175,23 @@ Message SerialCommand::process( Message msg )
   return msg;
 }
 
+
 void SerialCommand::commandHandler(byte* bytes, int length){}
 
 
 void SerialCommand::printMessageToSerial( Message msg )
 {
   // Bus Filter
-  byte flag;
-  flag = 0x1 << (msg.busId-1);
-  if( !(busLogEnabled & flag) ){
+  byte flag = 0x1 << (msg.busId - 1);
+  if( !(busLogEnabled & flag) ) {
     return;
   }
+  
+  // Bluetooth rate limiting
+  if ( activeSerial == &Serial1 && btRateLimit() ) return;
 
   #ifdef JSON_OUT
+
     // Output to serial as json string
     activeSerial->print(F("{\"packet\": {\"status\":\""));
     activeSerial->print( msg.busStatus,HEX);
@@ -207,9 +213,6 @@ void SerialCommand::printMessageToSerial( Message msg )
 
   #else
 
-    // Bluetooth rate limiting
-    if( activeSerial == &Serial1 && btRateLimit() ) return;
-
     activeSerial->write( 0x03 ); // Prefix with logging command
     activeSerial->write( msg.busId );
     activeSerial->write( msg.frame_id >> 8 );
@@ -223,7 +226,6 @@ void SerialCommand::printMessageToSerial( Message msg )
     activeSerial->write( NEWLINE );
 
   #endif
-
 }
 
 
@@ -250,7 +252,6 @@ void SerialCommand::processCommand(int command)
       bluetooth();
     break;
     default:
-
       // Check for Middleware commands
       for(int i=0; i<mwCommandIndex; i++ ){
         if( mw_cmds[i].command == command ){
@@ -263,7 +264,6 @@ void SerialCommand::processCommand(int command)
           break;
         }
       }
-
     break;
   }
 
@@ -285,7 +285,6 @@ void SerialCommand::settingsCall()
       dumpEeprom();
     break;
     case 0x03:
-      // TODO Read from input and store settings
       getAndSaveEeprom();
     break;
     case 0x04:
@@ -298,6 +297,9 @@ void SerialCommand::settingsCall()
     case 0x09:
       bitRate();
     break;
+    case 0x0A:
+      canMode();
+    break;    
     case 0x10:
       printChannelDebug();
     break;
@@ -305,28 +307,24 @@ void SerialCommand::settingsCall()
       resetToBootloader();
     break;
   }
-
 }
 
 
-void SerialCommand::setBluetoothFilter(){
-
+void SerialCommand::setBluetoothFilter()
+{
   byte cmd[5];
-  int bytesRead = getCommandBody( cmd, 5 );
+  getCommandBody( cmd, 5 );
 
   if( cmd[0] >= 0 && cmd[0] <= 3 ){
     btMessageIdFilters[cmd[0]][0] = (cmd[1] << 8)+cmd[2];
     btMessageIdFilters[cmd[0]][1] = (cmd[3] << 8)+cmd[4];
   }
-
 }
 
 
-
-void SerialCommand::bitRate(){
-  
-  byte cmd[3],
-       bytesRead;
+void SerialCommand::bitRate()
+{  
+  byte cmd[3], bytesRead;
 
   bytesRead = getCommandBody( cmd, 3 );
 
@@ -338,6 +336,44 @@ void SerialCommand::bitRate(){
   activeSerial->print( F( "\", \"rate\":" ) );
   activeSerial->print( Settings::getBaudRate( cmd[0] ), DEC );
   activeSerial->println( F( "}" ) ); 
+}
+
+
+void SerialCommand::canMode()
+{  
+  byte cmd[2], bytesRead;
+
+  bytesRead = getCommandBody( cmd, 2 );
+
+  if (bytesRead == 2)
+    Settings::setCanMode( cmd[0], cmd[1] );
+  
+  CANMode mode = Settings::getCanMode( cmd[0] );
+
+  activeSerial->print( F( "{\"event\":\"can-mode-bus" ) );
+  activeSerial->print(cmd[0]);
+  activeSerial->print( F( "\", \"mode\":\"" ) );
+  switch(mode) {
+    case CONFIGURATION:
+      activeSerial->print( F("CONFIGURATION") );
+      break;
+    case NORMAL:
+      activeSerial->print( F("NORMAL") );
+      break;
+    case SLEEP:
+      activeSerial->print( F("SLEEP") );
+      break;
+    case LISTEN:
+      activeSerial->print( F("LISTEN") );
+      break;
+    case LOOPBACK:
+      activeSerial->print( F("LOOPBACK") );
+      break;
+    default:
+      activeSerial->print( F("UNKNOWN") );
+      break;            
+  }
+  activeSerial->println( F( "\"}" ) ); 
 }
 
 
@@ -364,26 +400,24 @@ void SerialCommand::logCommand()
     bus.clearFilters();
     if( cmd[2] + cmd[3] + cmd[4] + cmd[5] )
       bus.setFilter( (cmd[2]<<8) + cmd[3], (cmd[4]<<8) + cmd[5] );
-    bus.setMode(NORMAL);
+    bus.setMode(Settings::getCanMode(cmd[0]));
 
   }
 
   activeSerial->write(COMMAND_OK);
   activeSerial->write(NEWLINE);
-
 }
 
 
 void SerialCommand::getAndSaveEeprom()
 {
-
   #define CHUNK_SIZE 32
 
   byte* settings = (byte *) &cbt_settings;
-  byte cmd[CHUNK_SIZE+1];
-  int bytesRead = getCommandBody( cmd, CHUNK_SIZE+2 );
+  byte cmd[CHUNK_SIZE + 2];
+  int bytesRead = getCommandBody( cmd, CHUNK_SIZE + 2 );
 
-  if( bytesRead == CHUNK_SIZE+2 && cmd[CHUNK_SIZE+1] == 0xA1 ){
+  if ( bytesRead == CHUNK_SIZE + 2 && cmd[CHUNK_SIZE+1] == 0xA1 ) {
 
     memcpy( settings+(cmd[0]*CHUNK_SIZE), &cmd[1], CHUNK_SIZE );
 
@@ -396,18 +430,16 @@ void SerialCommand::getAndSaveEeprom()
       activeSerial->println(F("{\"event\":\"eepromSave\", \"result\":\"success\"}"));
     }
 
-  }else{
+  } else {
     activeSerial->print( F("{\"event\":\"eepromData\", \"result\":\"failure\", \"chunk\":\"") );
     activeSerial->print(cmd[0]);
     activeSerial->println(F("\"}"));
   }
-
 }
 
 
 void SerialCommand::getAndSend()
 {
-
   byte cmd[12];
   int bytesRead = getCommandBody( cmd, 12 );
 
@@ -426,12 +458,11 @@ void SerialCommand::getAndSend()
   msg.dispatch = true;
 
   mainQueue->push( msg );
-
 }
 
 
-void SerialCommand::bluetooth(){
-
+void SerialCommand::bluetooth()
+{
   byte cmd[1];
   int bytesRead = getCommandBody( cmd, 1 );
 
@@ -453,7 +484,6 @@ void SerialCommand::bluetooth(){
       passthroughMode = false;
     break;
   }
-
 }
 
 
@@ -461,7 +491,7 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
 {
   unsigned int i = 0;
 
-  // Loop until requested amount of bytes are sent. Needed for BT latency
+  // Loop until requested amount of bytes are received. Needed for BT latency
   int timeout = COMMAND_TIMEOUT;
   while( i < length ) {
     // Cannot simply use delay() because Android Bluetooth gets corrupted data
@@ -469,7 +499,7 @@ int SerialCommand::getCommandBody( byte* cmd, int length )
       delay(1);
       timeout--;
     }
-    if (timeout == 0) return i;
+    if (timeout < 1) return i;
     cmd[i] = activeSerial->read();
     i++;
   }
@@ -497,7 +527,8 @@ void SerialCommand::printSystemDebug()
 }
 
 
-void SerialCommand::printChannelDebug(){
+void SerialCommand::printChannelDebug()
+{
   byte cmd[1];
   getCommandBody( cmd, 1 );
   if( cmd[0] > 0 && cmd[0] <= 3 )
@@ -506,7 +537,8 @@ void SerialCommand::printChannelDebug(){
 }
 
 
-void SerialCommand::printEFLG(CANBus channel) {
+void SerialCommand::printEFLG(CANBus channel) 
+{
   if (channel.readRegister(EFLG) & 0b00000001)      //EWARN
     activeSerial->print( F("Receive Error Warning - TEC or REC >= 96, ") );
   if (channel.readRegister(EFLG) & 0b00000010)      //RXWAR
@@ -527,8 +559,9 @@ void SerialCommand::printEFLG(CANBus channel) {
     activeSerial->print( F("No Errors") ); 
 }
 
-void SerialCommand::printChannelDebug(CANBus channel){
 
+void SerialCommand::printChannelDebug(CANBus channel)
+{
   activeSerial->print( F("{\"event\":\"busdbg\", \"name\":\"") );
   activeSerial->print( channel.name );
   activeSerial->print( F("\", \"canctrl\":\""));
@@ -537,7 +570,7 @@ void SerialCommand::printChannelDebug(CANBus channel){
   activeSerial->print( channel.readStatus(), HEX );
   activeSerial->print( F("\", \"error\":\""));
   activeSerial->print( channel.readRegister(EFLG), HEX );
-  if( activeSerial == &Serial ){
+  if ( activeSerial == &Serial ) {
     activeSerial->print( F("\", \"errorText\":\""));
     printEFLG(channel);
   }
@@ -594,30 +627,28 @@ void SerialCommand::dumpEeprom()
 }
 
 
-void SerialCommand::btDelay(){
-  
-  byteCount++;
-  
-  if( byteCount >= 8 ){
+void SerialCommand::btDelay()
+{  
+  byteCount++;  
+  if( byteCount >= 8 ) {
     delay(BT_SEND_DELAY);
     byteCount = 0;
   }
-  
 }
 
 
-bool SerialCommand::btRateLimit(){
-
-  if( millis() > lastBluetoothRX + 50 ){
+bool SerialCommand::btRateLimit()
+{
+  if ( millis() > lastBluetoothRX + 50 ) {
     lastBluetoothRX = millis();
     return false;
-  }else
-    return true;
-  
+  } else
+    return true;  
 }
 
 
-int SerialCommand::freeRam (){
+int SerialCommand::freeRam ()
+{
   extern int __heap_start, *__brkval;
   int v;
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);

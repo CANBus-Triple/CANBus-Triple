@@ -46,6 +46,7 @@ The IDE will compile and upload to the CANBus Triple.
 
 ![IDE Upload](http://res.cloudinary.com/ddbgan4vk/image/upload/w_420/v1424831475/ArduinoIDEUpload_kbajva.png)
 
+If you are upgrading from versions < 0.5.0 ensure to do an EEPROM restore, calling 0x01 0x04 command.
 
 
 ### Easy Mode
