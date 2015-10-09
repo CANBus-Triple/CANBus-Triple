@@ -4,8 +4,8 @@
 
 #include <avr/power.h>
 #include <avr/sleep.h>
-
 #include <CANBus.h>
+
 
 class Naptime : public Middleware
 {
@@ -20,8 +20,7 @@ class Naptime : public Middleware
     Naptime(SerialCommand *serialCommand);
     Naptime(int, SerialCommand *serialCommand);
     void commandHandler(byte* bytes, int length);
-  private:
-
+private:
 
 };
 

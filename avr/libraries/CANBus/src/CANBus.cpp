@@ -21,40 +21,45 @@ CANBus::CANBus( int ss, int reset, unsigned int bid, String nameString )
     name = nameString;
 }
 
-CANBus::CANBus( int ss, int reset ){
+CANBus::CANBus( int ss, int reset )
+{
     CANBus( ss, reset, 0, "Default" );
 }
 
-void CANBus::setName( String s ){
+void CANBus::setName( String s )
+{
     name = s;
 }
 
-void CANBus::setBusId( unsigned int n ){
+void CANBus::setBusId( unsigned int n )
+{
     busId = n;
 }
 
-void CANBus::begin()//constructor for initializing can module.
+// Constructor for initializing can module.
+void CANBus::begin()
 {
-    // set the slaveSelectPin as an output
+    // Set the slaveSelectPin as an output
     pinMode (SCK,OUTPUT);
     pinMode (MISO,INPUT);
     pinMode (MOSI, OUTPUT);
     pinMode (_ss, OUTPUT);
     pinMode (_reset,OUTPUT);
 
-    // initialize SPI:
+    // Initialize SPI:
     SPI.begin();
     SPI.setDataMode(SPI_MODE0);
     SPI.setClockDivider(SPI_CLOCK_DIV2);
     SPI.setBitOrder(MSBFIRST);
 
-    digitalWrite(_reset,LOW); /* RESET CAN CONTROLLER*/
+    digitalWrite(_reset, LOW); /* RESET CAN CONTROLLER*/
     delay(50);
-    digitalWrite(_reset,HIGH);
+    digitalWrite(_reset, HIGH);
     delay(50);
 }
 
-void CANBus::reset()//constructor for initializing can module.
+// Constructor for initializing can module.
+void CANBus::reset()
 {
     digitalWrite(_ss, LOW);
     delay(1);
@@ -64,83 +69,74 @@ void CANBus::reset()//constructor for initializing can module.
 }
 
 #ifdef OLD_BAUD
-bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
+// Sets bitrate for CAN node
+bool CANBus::baudConfig(int bitRate)
 {
-    byte config0, config1, config2;
+    byte config1, config2, config3;
 
-    switch (bitRate)
-    {
-case 10:
-        config0 = 0x31;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 20:
-        config0 = 0x18;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 50:
-        config0 = 0x09;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 83:
-        config0 = 0x03;
-        config1 = 0xBE;
-        config2 = 0x07;
-        break;
-
-case 100:
-        config0 = 0x04;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 125:
-        config0 = 0x03;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 250:
-        config0 = 0x01;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 500:
-        config0 = 0x00;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-case 1000:
-    //1 megabit mode added by Patrick Cruce(pcruce_at_igpp.ucla.edu)
-    //Faster communications enabled by shortening bit timing phases(3 Tq. PS1 & 3 Tq. PS2) Note that this may exacerbate errors due to synchronization or arbitration.
-    config0 = 0x80;
-    config1 = 0x90;
-    config2 = 0x02;
+    switch (bitRate) {
+        case 10:
+            config1 = 0x31;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 20:
+            config1 = 0x18;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 50:
+            config1 = 0x09;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 83:
+            config1 = 0x03;
+            config2 = 0xBE;
+            config3 = 0x07;
+            break;
+        case 100:
+            config1 = 0x04;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 125:
+            config1 = 0x03;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 250:
+            config1 = 0x01;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 500:
+            config1 = 0x00;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 1000:
+            // 1 megabit mode added by Patrick Cruce(pcruce_at_igpp.ucla.edu)
+            // Faster communications enabled by shortening bit timing phases(3 Tq. PS1 & 3 Tq. PS2) 
+            // Note that this may exacerbate errors due to synchronization or arbitration.
+            config1 = 0x80;
+            config2 = 0x90;
+            config3 = 0x02;
+            break;
     }
 
-    this->writeRegister(CNF1, config0);
-    this->writeRegister(CNF2, config1);
-    this->writeRegister(CNF3, config2);
+    this->writeRegister(CNF1, config1);
+    this->writeRegister(CNF2, config2);
+    this->writeRegister(CNF3, config3);
 
-  return true;
+    return true;
 }
-
-
 #else
 /*
 *   New Baud rate calculation
 */
-
 bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
 {
-
     // Calculate bit timing registers
     byte BRP;
     float TQ;
@@ -214,14 +210,13 @@ bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
     Serial.print("CNT3 ");
     Serial.println(config3, BIN);
     */
-
     return true;
-
 }
 #endif
 
 
-void CANBus::bitModify( byte reg, byte value, byte mask  ){
+void CANBus::bitModify( byte reg, byte value, byte mask )
+{
     digitalWrite(_ss, LOW);
     SPI.transfer(BIT_MODIFY);
     SPI.transfer(reg);
@@ -231,15 +226,14 @@ void CANBus::bitModify( byte reg, byte value, byte mask  ){
 }
 
 
-int CANBus::getNextTxBuffer(){
-
+int CANBus::getNextTxBuffer()
+{
     byte stat = this->readStatus();
 
     if( (stat & 0x4) != 0x4 )   return 0;
     if( (stat & 0x10) != 0x10 ) return 1;
     if( (stat & 0x40) != 0x40 ) return 2;
     return -1;
-
 }
 
 
@@ -278,18 +272,9 @@ void CANBus::clearFilters(){
 
 
 // Enable / Disable interrupt pin on message Rx
-void CANBus::setRxInt(bool b){
-
-    byte writeVal;
-
-    if (b) {
-        writeVal = 0x03;
-    }else{
-        writeVal = 0x00;
-    }
-
-    this->bitModify(CANINTE, writeVal, 0x03);
-
+void CANBus::setRxInt(bool enable)
+{
+    this->bitModify(CANINTE, enable? 0x03 : 0x00, 0x03);
 }
 
 
@@ -309,14 +294,13 @@ void CANBus::clearInterrupt(){
     SPI.transfer(mask);
     SPI.transfer(writeVal);
     digitalWrite(_ss, HIGH);
-
 }
 */
 
 
 // Set clock output scaler
-void CANBus::setClkPre(int mode){
-
+void CANBus::setClkPre(int mode)
+{
     byte writeVal;
 
     switch(mode) {
@@ -335,13 +319,13 @@ void CANBus::setClkPre(int mode){
     }
 
     this->bitModify(CANCTRL, writeVal, 0x03);
-
 }
 
 
-//Method added to enable testing in loopback mode.(pcruce_at_igpp.ucla.edu)
-void CANBus::setMode(CANMode mode) { //put CAN controller in one of five modes
-
+// Method added to enable testing in loopback mode.(pcruce_at_igpp.ucla.edu)
+// Put CAN controller in one of five modes
+void CANBus::setMode(CANMode mode)  
+{
     byte writeVal;
 
     switch(mode) {
@@ -363,7 +347,6 @@ void CANBus::setMode(CANMode mode) { //put CAN controller in one of five modes
     }
 
     this->bitModify(CANCTRL, writeVal, 0xE0);
-
 }
 
 

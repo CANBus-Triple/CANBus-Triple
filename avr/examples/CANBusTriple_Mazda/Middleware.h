@@ -15,5 +15,5 @@ class Middleware
 
 Message Middleware::process( Message msg ){}
 
-
 #endif
+

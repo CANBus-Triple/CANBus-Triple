@@ -10,6 +10,7 @@ Middleware	KEYWORD1
 
 push	KEYWORD2
 baudConfig	KEYWORD2
+bitModify   KEYWORD2
 setMode	KEYWORD2
 setClkPre	KEYWORD2
 setRxInt	KEYWORD2

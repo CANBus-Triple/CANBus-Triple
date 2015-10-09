@@ -59,46 +59,46 @@ CNF3=b'00000010'=0x02 = SOF = 0  & WAKFIL = 0 & PS2 = 3
 #ifndef can_h
 #define can_h
 
-#define SCK 15  //spi clock line
+#define SCK 15  // SPI clock line
 #define MISO 14
 #define MOSI 16
 
 #define RESET_REG 0xc0
 #define READ 0x03
-#define WRITE 0x02 //read and write comands for SPI
+#define WRITE 0x02 // Read and write comands for SPI
 
 #define READ_RX_BUF_0_ID 0x90
 #define READ_RX_BUF_0_DATA 0x92
 #define READ_RX_BUF_1_ID 0x94
-#define READ_RX_BUF_1_DATA 0x96 //SPI commands for reading CAN RX buffers
+#define READ_RX_BUF_1_DATA 0x96 // SPI commands for reading CAN RX buffers
 
 #define LOAD_TX_BUF_0_ID 0x40
 #define LOAD_TX_BUF_0_DATA 0x41
 #define LOAD_TX_BUF_1_ID 0x42
 #define LOAD_TX_BUF_1_DATA 0x43
 #define LOAD_TX_BUF_2_ID 0x44
-#define LOAD_TX_BUF_2_DATA 0x45 //SPI commands for loading CAN TX buffers
+#define LOAD_TX_BUF_2_DATA 0x45 // SPI commands for loading CAN TX buffers
 
 #define SEND_TX_BUF_0 0x81
 #define SEND_TX_BUF_1 0x82
-#define SEND_TX_BUF_2 0x83 //SPI commands for transmitting CAN TX buffers
+#define SEND_TX_BUF_2 0x83 // SPI commands for transmitting CAN TX buffers
 
 #define READ_STATUS 0xA0
 #define RX_STATUS 0xB0
-#define BIT_MODIFY 0x05 //Other commands
+#define BIT_MODIFY 0x05 // Other commands
 
 
-//Registers
-#define CNF1 0x2A
-#define CNF2 0x29
-#define CNF3 0x28
-#define TXB0CTRL 0x30
+// Registers
+#define CNF1 0x2A  // Configuration registers (bit timing)
+#define CNF2 0x29  
+#define CNF3 0x28  
+#define TXB0CTRL 0x30 // Transmit buffer control registers
 #define TXB1CTRL 0x40
-#define TXB2CTRL 0x50 //TRANSMIT BUFFER CONTROL REGISTER
-#define TXB0DLC 0x35 //Data length code registers
+#define TXB2CTRL 0x50 
+#define TXB0DLC 0x35 // Data length code registers
 #define TXB1DLC 0x45
 #define TXB2DLC 0x55
-#define CANCTRL 0x0F //Mode control register
+#define CANCTRL 0x0F // Mode control register
 #define CANSTAT 0x0E // Status register
 #define CANINTE 0x2B // Interrupt Enable
 #define CANINTF 0x2C // Interrupt Flag
@@ -184,15 +184,15 @@ public:
     void setName(String s);
     void setBusId(unsigned int n);
 
-    void begin();                       //sets up MCP2515
-    bool baudConfig(int bitRate);       //sets up baud
+    void begin();                       // Sets up MCP2515
+    bool baudConfig(int bitRate);       // Sets up baud
 
     void reset();                       // Send MCP2515 Reset command
 
-    void bitModify( byte reg, byte value, byte mask  );
+    void bitModify( byte reg, byte value, byte mask );
 
-	//Method added to enable testing in loopback mode.(pcruce_at_igpp.ucla.edu)
-	void setMode(CANMode mode) ;        //put CAN controller in one of five modes
+	// Method added to enable testing in loopback mode (pcruce_at_igpp.ucla.edu)
+	void setMode(CANMode mode);         // Put CAN controller in one of five modes
 
     // Method to send CLKPRE (Clock output scaler) 1,2,4,8 available values.
     void setClkPre(int mode);
@@ -204,7 +204,7 @@ public:
     int getNextTxBuffer();
 
     // Interrupt control register methods
-    void setRxInt(bool b);
+    void setRxInt(bool enable);
 
 
     byte readRegister( int addr );
@@ -231,10 +231,10 @@ public:
 	void readDATA_ff_0(byte* length_out,byte *data_out,unsigned short *id_out);
 	void readDATA_ff_1(byte* length_out,byte *data_out,unsigned short *id_out);
 
-	//Adding can to read status register(pcruce_at_igpp.ucla.edu)
-	//can be used to determine whether a frame was received.
-	//(readStatus() & 0x80) == 0x80 means frame in buffer 0
-	//(readStatus() & 0x40) == 0x40 means frame in buffer 1
+	// Adding can to read status register (pcruce_at_igpp.ucla.edu)
+	// Can be used to determine whether a frame was received.
+	// (readStatus() & 0x80) == 0x80 means frame in buffer 0
+	// (readStatus() & 0x40) == 0x40 means frame in buffer 1
     byte readStatus();
 
     // byte readControl();

@@ -16,7 +16,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.5.0"
+    #define BUILD_VERSION "0.5.1"
 #endif
 // #define SLEEP_ENABLE
 
@@ -33,11 +33,8 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 #include "ChannelSwap.h"
 #include "Naptime.h"
 
-
-byte rx_status;
 QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
-
 
 /*
 *  Middleware Setup
@@ -57,8 +54,8 @@ Middleware *activeMiddleware[] = {
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );
 
 
-void setup(){
-
+void setup()
+{
   Settings::init();
   delay(1);
 
@@ -83,12 +80,10 @@ void setup(){
   pinMode( BT_SLEEP, OUTPUT );
   digitalWrite( BT_SLEEP, HIGH ); // Keep BLE112 Awake
 
-
   /*
   *  Boot LED
   */
   pinMode( BOOT_LED, OUTPUT );
-
 
   pinMode( CAN1INT_D, INPUT );
   pinMode( CAN2INT_D, INPUT );
@@ -142,34 +137,21 @@ void setup(){
   }
 
   // wdt_enable(WDTO_1S);
-
-}
-
-/*
-*  Interrupt Handlers
-*  Currently unused - loop() method will poll for logic low before a read
-*/
-void handleInterrupt1(){
-}
-void handleInterrupt2(){
-}
-void handleInterrupt3(){
 }
 
 
 /*
 *  Main Loop
 */
-void loop() {
-
+void loop() 
+{
   // Run all middleware ticks
-  for(int i=0; i<=activeMiddlewareLength-1; i++)
+  for(int i = 0; i <= activeMiddlewareLength - 1; i++)
     activeMiddleware[i]->tick();
 
-
-  if( digitalRead(CAN1INT_D) == 0 ) readBus(CANBus1);
-  if( digitalRead(CAN2INT_D) == 0 ) readBus(CANBus2);
-  if( digitalRead(CAN3INT_D) == 0 ) readBus(CANBus3);
+  if ( digitalRead(CAN1INT_D) == 0 ) readBus(CANBus1);
+  if ( digitalRead(CAN2INT_D) == 0 ) readBus(CANBus2);
+  if ( digitalRead(CAN3INT_D) == 0 ) readBus(CANBus3);
 
 
   // Process message stack
@@ -193,7 +175,6 @@ void loop() {
 
   }
 
-
   // Pet the dog
   // wdt_reset();
 
@@ -203,8 +184,8 @@ void loop() {
 /*
 *  Load CAN Controller buffer and set send flag
 */
-boolean sendMessage( Message msg, CANBus bus ){
-
+boolean sendMessage( Message msg, CANBus bus )
+{
   if( msg.dispatch == false ) return true;
 
   digitalWrite( BOOT_LED, HIGH );
@@ -233,7 +214,6 @@ boolean sendMessage( Message msg, CANBus bus ){
   digitalWrite( BOOT_LED, LOW );
 
   return true;
-
 }
 
 
