@@ -21,40 +21,45 @@ CANBus::CANBus( int ss, int reset, unsigned int bid, String nameString )
     name = nameString;
 }
 
-CANBus::CANBus( int ss, int reset ){
+CANBus::CANBus( int ss, int reset )
+{
     CANBus( ss, reset, 0, "Default" );
 }
 
-void CANBus::setName( String s ){
+void CANBus::setName( String s )
+{
     name = s;
 }
 
-void CANBus::setBusId( unsigned int n ){
+void CANBus::setBusId( unsigned int n )
+{
     busId = n;
 }
 
-void CANBus::begin()//constructor for initializing can module.
+// Constructor for initializing can module.
+void CANBus::begin()
 {
-    // set the slaveSelectPin as an output
+    // Set the slaveSelectPin as an output
     pinMode (SCK,OUTPUT);
     pinMode (MISO,INPUT);
     pinMode (MOSI, OUTPUT);
     pinMode (_ss, OUTPUT);
     pinMode (_reset,OUTPUT);
 
-    // initialize SPI:
+    // Initialize SPI:
     SPI.begin();
     SPI.setDataMode(SPI_MODE0);
     SPI.setClockDivider(SPI_CLOCK_DIV2);
     SPI.setBitOrder(MSBFIRST);
 
-    digitalWrite(_reset,LOW); /* RESET CAN CONTROLLER*/
+    digitalWrite(_reset, LOW); /* RESET CAN CONTROLLER*/
     delay(50);
-    digitalWrite(_reset,HIGH);
+    digitalWrite(_reset, HIGH);
     delay(50);
 }
 
-void CANBus::reset()//constructor for initializing can module.
+// Constructor for initializing can module.
+void CANBus::reset()
 {
     digitalWrite(_ss, LOW);
     delay(1);
@@ -64,83 +69,74 @@ void CANBus::reset()//constructor for initializing can module.
 }
 
 #ifdef OLD_BAUD
-bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
+// Sets bitrate for CAN node
+bool CANBus::baudConfig(int bitRate)
 {
-    byte config0, config1, config2;
+    byte config1, config2, config3;
 
-    switch (bitRate)
-    {
-case 10:
-        config0 = 0x31;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 20:
-        config0 = 0x18;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 50:
-        config0 = 0x09;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 83:
-        config0 = 0x03;
-        config1 = 0xBE;
-        config2 = 0x07;
-        break;
-
-case 100:
-        config0 = 0x04;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 125:
-        config0 = 0x03;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 250:
-        config0 = 0x01;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-
-case 500:
-        config0 = 0x00;
-        config1 = 0xB8;
-        config2 = 0x05;
-        break;
-case 1000:
-    //1 megabit mode added by Patrick Cruce(pcruce_at_igpp.ucla.edu)
-    //Faster communications enabled by shortening bit timing phases(3 Tq. PS1 & 3 Tq. PS2) Note that this may exacerbate errors due to synchronization or arbitration.
-    config0 = 0x80;
-    config1 = 0x90;
-    config2 = 0x02;
+    switch (bitRate) {
+        case 10:
+            config1 = 0x31;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 20:
+            config1 = 0x18;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 50:
+            config1 = 0x09;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 83:
+            config1 = 0x03;
+            config2 = 0xBE;
+            config3 = 0x07;
+            break;
+        case 100:
+            config1 = 0x04;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 125:
+            config1 = 0x03;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 250:
+            config1 = 0x01;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 500:
+            config1 = 0x00;
+            config2 = 0xB8;
+            config3 = 0x05;
+            break;
+        case 1000:
+            // 1 megabit mode added by Patrick Cruce(pcruce_at_igpp.ucla.edu)
+            // Faster communications enabled by shortening bit timing phases(3 Tq. PS1 & 3 Tq. PS2) 
+            // Note that this may exacerbate errors due to synchronization or arbitration.
+            config1 = 0x80;
+            config2 = 0x90;
+            config3 = 0x02;
+            break;
     }
 
-    this->writeRegister(CNF1, config0);
-    this->writeRegister(CNF2, config1);
-    this->writeRegister(CNF3, config2);
+    this->writeRegister(CNF1, config1);
+    this->writeRegister(CNF2, config2);
+    this->writeRegister(CNF3, config3);
 
-  return true;
+    return true;
 }
-
-
 #else
 /*
 *   New Baud rate calculation
 */
-
 bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
 {
-
     // Calculate bit timing registers
     byte BRP;
     float TQ;
@@ -214,14 +210,13 @@ bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
     Serial.print("CNT3 ");
     Serial.println(config3, BIN);
     */
-
     return true;
-
 }
 #endif
 
 
-void CANBus::bitModify( byte reg, byte value, byte mask  ){
+void CANBus::bitModify( byte reg, byte value, byte mask )
+{
     digitalWrite(_ss, LOW);
     SPI.transfer(BIT_MODIFY);
     SPI.transfer(reg);
@@ -231,65 +226,92 @@ void CANBus::bitModify( byte reg, byte value, byte mask  ){
 }
 
 
-int CANBus::getNextTxBuffer(){
-
+int CANBus::getNextTxBuffer()
+{
     byte stat = this->readStatus();
 
     if( (stat & 0x4) != 0x4 )   return 0;
     if( (stat & 0x10) != 0x10 ) return 1;
     if( (stat & 0x40) != 0x40 ) return 2;
     return -1;
-
 }
 
 
-void CANBus::setFilter( int filter0, int filter1 ){
-    
-    byte SIDH = filter0 >> 3;
-    byte SIDL = filter0 << 5;
-    this->writeRegister(RXF0SIDH, SIDH, SIDL ); // RXB0
-    this->writeRegister(RXF2SIDH, SIDH, SIDL ); // RXB1
-
-    SIDH = filter1 >> 3;
-    SIDL = filter1 << 5;
-    this->writeRegister(RXF1SIDH, SIDH, SIDL ); // RXB0
-    this->writeRegister(RXF3SIDH, SIDH, SIDL ); // RXB1
-    this->writeRegister(RXF4SIDH, SIDH, SIDL ); // RXB1
-    this->writeRegister(RXF5SIDH, SIDH, SIDL ); // RXB1
-
-    // Set mask to match everything
-    /*
-    int combined = filter0 | filter1;
-    SIDH = combined >> 3;
-    SIDL = combined << 5;
-    */
-    SIDH = 0xFF >> 3;
-    SIDL = 0xFF << 5;
-    this->writeRegister(RXM0SIDH, SIDH, SIDL );
-    this->writeRegister(RXM1SIDH, SIDH, SIDL );
-
+void CANBus::setMask( int rxBufferId, int mask )
+{    
+    this->writeRegister11bit((rxBufferId == 1)? RXM1SIDH : RXM0SIDH, mask);
 }
 
 
-void CANBus::clearFilters(){
-    this->writeRegister(RXM0SIDH, 0, 0 );
-    this->writeRegister(RXM1SIDH, 0, 0 );
+void CANBus::setFilterSingle( int rxFilterId, int filter )
+{    
+    int filterAddr;
+    switch(rxFilterId) {
+        case 1:
+            filterAddr = RXF1SIDH;
+            break;
+        case 2:
+            filterAddr = RXF2SIDH;
+            break;
+        case 3:
+            filterAddr = RXF3SIDH;
+            break;
+        case 4:
+            filterAddr = RXF4SIDH;
+            break;
+        case 5:
+            filterAddr = RXF5SIDH;
+            break;
+        default:
+            filterAddr = RXF0SIDH;
+            break;
+    }
+    this->writeRegister11bit(filterAddr, filter);
+}
+
+
+void CANBus::setFilterMask( int filter0, int mask0, int filter1, int mask1 )
+{    
+    // Buffer RXB0 filters and mask    
+    this->setMask(0, mask0);
+    this->setFilterSingle(0, filter0);
+    this->setFilterSingle(1, filter0);
+
+    // Buffer RXB1 filters and mask
+    this->setMask(1, mask1);
+    this->setFilterSingle(2, filter1);
+    this->setFilterSingle(3, filter1);
+    this->setFilterSingle(4, filter1);
+    this->setFilterSingle(5, filter1);
+}
+
+
+void CANBus::setFilter( int filter0, int filter1 )
+{    
+    if (filter1 == 0) filter1 = filter0;
+    // Set mask to match all filter bits
+    this->setFilterMask( filter0, 0xFFFF, filter1, 0xFFFF );
+}
+
+
+void CANBus::disableFilters()
+{
+    this->setMask(0, 0);
+    this->setMask(1, 0);
 }
 
 
 // Enable / Disable interrupt pin on message Rx
-void CANBus::setRxInt(bool b){
+void CANBus::setRxInt(bool enable)
+{
+    this->bitModify(CANINTE, enable? 0x03 : 0x00, 0x03);
+}
 
-    byte writeVal;
 
-    if (b) {
-        writeVal = 0x03;
-    }else{
-        writeVal = 0x00;
-    }
-
-    this->bitModify(CANINTE, writeVal, 0x03);
-
+// Enable / Disable interrupt pin on CAN bus activity (while in SLEEP mode)
+void CANBus::setWakeupInt(bool enable)
+{
+    this->bitModify(CANINTE, enable? 0x40 : 0x00, 0x40);
 }
 
 
@@ -309,14 +331,13 @@ void CANBus::clearInterrupt(){
     SPI.transfer(mask);
     SPI.transfer(writeVal);
     digitalWrite(_ss, HIGH);
-
 }
 */
 
 
 // Set clock output scaler
-void CANBus::setClkPre(int mode){
-
+void CANBus::setClkPre(int mode)
+{
     byte writeVal;
 
     switch(mode) {
@@ -335,13 +356,13 @@ void CANBus::setClkPre(int mode){
     }
 
     this->bitModify(CANCTRL, writeVal, 0x03);
-
 }
 
 
-//Method added to enable testing in loopback mode.(pcruce_at_igpp.ucla.edu)
-void CANBus::setMode(CANMode mode) { //put CAN controller in one of five modes
-
+// Method added to enable testing in loopback mode.(pcruce_at_igpp.ucla.edu)
+// Put CAN controller in one of five modes
+void CANBus::setMode(CANMode mode)  
+{
     byte writeVal;
 
     switch(mode) {
@@ -363,132 +384,64 @@ void CANBus::setMode(CANMode mode) { //put CAN controller in one of five modes
     }
 
     this->bitModify(CANCTRL, writeVal, 0xE0);
-
 }
 
 
-void CANBus::send_0()//transmits buffer 0
+void CANBus::setWakeupFilter(bool enable)
 {
+    this->bitModify(CNF3, enable? 0x40 : 0x00, 0x40);
+}
 
-    //delays removed from SEND command(pcruce_at_igpp.ucla.edu)
-    //In testing we found that any lost data was from PC<->Serial Delays,
-    //Not CAN Controller/AVR delays.  Thus removing the delays at this level
-    //allows maximum flexibility and performance.
+
+void CANBus::transmitBuffer(int bufferId) // Transmits buffer 
+{
+    byte bufAddr;
+    switch(bufferId) {
+        case 0:
+            bufAddr = SEND_TX_BUF_0;
+            break;
+        case 1:
+            bufAddr = SEND_TX_BUF_1;
+            break;
+        case 2:
+            bufAddr = SEND_TX_BUF_2;
+            break;
+        default:
+            return;
+            break;
+    }
+
+    // Delays removed from SEND command(pcruce_at_igpp.ucla.edu)
+    // In testing we found that any lost data was from PC<->Serial Delays,
+    // not CAN Controller/AVR delays. Thus removing the delays at this level
+    // allows maximum flexibility and performance.
     digitalWrite(_ss, LOW);
-    SPI.transfer(SEND_TX_BUF_0);
+    SPI.transfer(bufAddr);
     digitalWrite(_ss, HIGH);
 }
 
 
-void CANBus::send_1()//transmits buffer 1
+// Extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
+// It is the responsibility of the user to allocate memory for output.
+// If you don't know what length the bus frames will be, data_out should be 8-bytes
+void CANBus::readFullFrame(byte buffer_id, byte* length_out, byte *data_out, unsigned short *id_out)
 {
-    digitalWrite(_ss, LOW);
-    SPI.transfer(SEND_TX_BUF_1);
-    digitalWrite(_ss, HIGH);
-}
-
-
-void CANBus::send_2()//transmits buffer 2
-{
-    digitalWrite(_ss, LOW);
-    SPI.transfer(SEND_TX_BUF_2);
-    digitalWrite(_ss, HIGH);
-}
-
-
-char CANBus::readBuffer(byte buffer)
-{
-    char retVal;
-    digitalWrite(_ss, LOW);
-    delay(1);
-    SPI.transfer(buffer);
-    retVal = SPI.transfer(0xFF);
-    delay(1);
-    digitalWrite(_ss, HIGH);
-    delay(1);
-    return retVal;    
-}
-
-
-void CANBus::writeBuffer(byte buffer, byte value)
-{
-    digitalWrite(_ss, LOW);
-    delay(1);
-    SPI.transfer(buffer);
-    SPI.transfer(value);
-    delay(1);
-    digitalWrite(_ss, HIGH);
-    delay(1);    
-}
-
-
-char CANBus::readID_0()//reads ID in recieve buffer 0
-{
-    return this->readBuffer(READ_RX_BUF_0_ID);
-}
-
-
-char CANBus::readID_1()//reads ID in reciever buffer 1
-{
-    return this->readBuffer(READ_RX_BUF_1_ID);
-}
-
-
-char CANBus::readDATA_0()//reads DATA in recieve buffer 0
-{
-    return this->readBuffer(READ_RX_BUF_0_DATA);
-}
-
-char CANBus::readDATA_1()//reads data in recieve buffer 1
-{
-    return this->readBuffer(READ_RX_BUF_1_DATA);
-}
-
-
-//extending CAN data read to full frames(pcruce_at_igpp.ucla.edu)
-//It is the responsibility of the user to allocate memory for output.
-//If you don't know what length the bus frames will be, data_out should be 8-bytes
-void CANBus::readDATA_ff_0(byte* length_out,byte *data_out,unsigned short *id_out){
-
-    byte len,i;
-    unsigned short id_h,id_l;
+    byte len, i;
+    unsigned short id_h, id_l;
 
     digitalWrite(_ss, LOW);
-    SPI.transfer(READ_RX_BUF_0_ID);
+    SPI.transfer((buffer_id == 0)? READ_RX_BUF_0_ID : READ_RX_BUF_1_ID);
     id_h = (unsigned short) SPI.transfer(0xFF); //id high
     id_l = (unsigned short) SPI.transfer(0xFF); //id low
-    SPI.transfer(0xFF); //extended id high(unused)
-    SPI.transfer(0xFF); //extended id low(unused)
+    SPI.transfer(0xFF); // Extended id high(unused)
+    SPI.transfer(0xFF); // Extended id low(unused)
     len = (SPI.transfer(0xFF) & 0x0F); //data length code
-    for (i = 0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         data_out[i] = SPI.transfer(0xFF);
     }
     digitalWrite(_ss, HIGH);
     (*length_out) = len;
-    (*id_out) = ((id_h << 3) + ((id_l & 0xE0) >> 5)); //repack identifier
-
-}
-
-
-void CANBus::readDATA_ff_1(byte* length_out,byte *data_out,unsigned short *id_out){
-
-    byte id_h,id_l,len,i;
-
-    digitalWrite(_ss, LOW);
-    SPI.transfer(READ_RX_BUF_1_ID);
-    id_h = SPI.transfer(0xFF); //id high
-    id_l = SPI.transfer(0xFF); //id low
-    SPI.transfer(0xFF); //extended id high(unused)
-    SPI.transfer(0xFF); //extended id low(unused)
-    len = (SPI.transfer(0xFF) & 0x0F); //data length code
-    for (i = 0;i<len;i++) {
-        data_out[i] = SPI.transfer(0xFF);
-    }
-    digitalWrite(_ss, HIGH);
-
-    (*length_out) = len;
-    (*id_out) = ((((unsigned short) id_h) << 3) + ((id_l & 0xE0) >> 5)); //repack identifier
-
+    (*id_out) = ((id_h << 3) + ((id_l & 0xE0) >> 5)); // Repack identifier
 }
 
 
@@ -527,14 +480,17 @@ void CANBus::writeRegister( int addr, byte value )
 }
 
 
-void CANBus::writeRegister( int addr, byte value, byte value2 )
+void CANBus::writeRegister11bit( int addr, int value )
 {
+    byte bReg1 = value >> 3;
+    byte bReg2 = value << 5;
+
     digitalWrite(_ss, LOW);
     delay(1);
     SPI.transfer(WRITE);
     SPI.transfer(addr);
-    SPI.transfer(value);
-    SPI.transfer(value2);
+    SPI.transfer(bReg1);
+    SPI.transfer(bReg2);
     delay(1);
     digitalWrite(_ss, HIGH);
     delay(1);
@@ -595,98 +551,38 @@ byte CANBus::readTXBNCTRL(int bufferid)
 */
 
 
-void CANBus::load_0(byte identifier, byte data)//loads ID and DATA into transmit buffer 0
+void CANBus::loadFullFrame(byte bufferId, byte length, unsigned short identifier, byte *data)
 {
-    this->writeBuffer(LOAD_TX_BUF_0_ID, identifier);
-    this->writeBuffer(LOAD_TX_BUF_0_DATA, data);
-}
+    byte i, id_high, id_low, bufAddr;
 
+    switch(bufferId) {
+        case 0:
+            bufAddr = LOAD_TX_BUF_0_ID;
+            break;
+        case 1:
+            bufAddr = LOAD_TX_BUF_1_ID;
+            break;
+        case 2:
+            bufAddr = LOAD_TX_BUF_2_ID;
+            break;
+        default:
+            return;
+            break;
+    }
 
-void CANBus::load_1(byte identifier, byte data)//loads ID and DATA into transmit buffer 1
-{
-    this->writeBuffer(LOAD_TX_BUF_1_ID, identifier);
-    this->writeBuffer(LOAD_TX_BUF_1_DATA, data);
-}
-
-
-void CANBus::load_2(byte identifier, byte data)//loads ID and DATA into transmit buffer 2
-{
-    this->writeBuffer(LOAD_TX_BUF_2_ID, identifier);
-    this->writeBuffer(LOAD_TX_BUF_2_DATA, data);    
-}
-
-
-void CANBus::load_ff_0(byte length,unsigned short identifier,byte *data)
-{
-
-    byte i,id_high,id_low;
-
-    //generate id bytes before SPI write
+    // Generate id bytes before SPI write
     id_high = (byte) (identifier >> 3);
     id_low = (byte) ((identifier << 5) & 0x00E0);
 
     digitalWrite(_ss, LOW);
-    SPI.transfer(LOAD_TX_BUF_0_ID);
-    SPI.transfer(id_high); //identifier high bits
-    SPI.transfer(id_low); //identifier low bits
-    SPI.transfer(0x00); //extended identifier registers(unused)
+    SPI.transfer(bufAddr);
+    SPI.transfer(id_high); // Identifier high bits
+    SPI.transfer(id_low); // Identifier low bits
+    SPI.transfer(0x00); // Extended identifier registers (unused)
     SPI.transfer(0x00);
     SPI.transfer(length);
-    for (i=0;i<length;i++) { //load data buffer
+    for (i = 0; i < length; i++) { // Load data buffer
         SPI.transfer(data[i]);
     }
-
     digitalWrite(_ss, HIGH);
-
-}
-
-
-void CANBus::load_ff_1(byte length,unsigned short identifier,byte *data)
-{
-
-    byte i,id_high,id_low;
-
-    //generate id bytes before SPI write
-    id_high = (byte) (identifier >> 3);
-    id_low = (byte) ((identifier << 5) & 0x00E0);
-
-    digitalWrite(_ss, LOW);
-    SPI.transfer(LOAD_TX_BUF_1_ID);
-    SPI.transfer(id_high); //identifier high bits
-    SPI.transfer(id_low); //identifier low bits
-    SPI.transfer(0x00); //extended identifier registers(unused)
-    SPI.transfer(0x00);
-    SPI.transfer(length);
-    for (i=0;i<length;i++) { //load data buffer
-        SPI.transfer(data[i]);
-    }
-
-    digitalWrite(_ss, HIGH);
-
-}
-
-
-void CANBus::load_ff_2(byte length,unsigned short identifier,byte *data)
-{
-
-    byte i,id_high,id_low;
-
-    //generate id bytes before SPI write
-    id_high = (byte) (identifier >> 3);
-    id_low = (byte) ((identifier << 5) & 0x00E0);
-
-    digitalWrite(_ss, LOW);
-
-    SPI.transfer(LOAD_TX_BUF_2_ID);
-    SPI.transfer(id_high); //identifier high bits
-    SPI.transfer(id_low); //identifier low bits
-    SPI.transfer(0x00); //extended identifier registers(unused)
-    SPI.transfer(0x00);
-    SPI.transfer(length); //data length code
-    for (i=0;i<length;i++) { //load data buffer
-        SPI.transfer(data[i]);
-    }
-
-    digitalWrite(_ss, HIGH);
-
 }
