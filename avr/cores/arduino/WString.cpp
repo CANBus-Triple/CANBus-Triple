@@ -43,7 +43,7 @@ String::String(const __FlashStringHelper *pstr)
 	*this = pstr;
 }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
+#if __cplusplus >= 201103L || defined(__GXX_EXPERIMENTAL_CXX0X__)
 String::String(String &&rval)
 {
 	init();
@@ -189,7 +189,7 @@ String & String::copy(const __FlashStringHelper *pstr, unsigned int length)
 	return *this;
 }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
+#if __cplusplus >= 201103L || defined(__GXX_EXPERIMENTAL_CXX0X__)
 void String::move(String &rhs)
 {
 	if (buffer) {
@@ -214,14 +214,14 @@ void String::move(String &rhs)
 String & String::operator = (const String &rhs)
 {
 	if (this == &rhs) return *this;
-
+	
 	if (rhs.buffer) copy(rhs.buffer, rhs.len);
 	else invalidate();
-
+	
 	return *this;
 }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
+#if __cplusplus >= 201103L || defined(__GXX_EXPERIMENTAL_CXX0X__)
 String & String::operator = (String &&rval)
 {
 	if (this != &rval) move(rval);
@@ -239,7 +239,7 @@ String & String::operator = (const char *cstr)
 {
 	if (cstr) copy(cstr, strlen(cstr));
 	else invalidate();
-
+	
 	return *this;
 }
 
@@ -482,7 +482,7 @@ unsigned char String::equalsIgnoreCase( const String &s2 ) const
 	const char *p2 = s2.buffer;
 	while (*p1) {
 		if (tolower(*p1++) != tolower(*p2++)) return 0;
-	}
+	} 
 	return 1;
 }
 
@@ -513,7 +513,7 @@ char String::charAt(unsigned int loc) const
 	return operator[](loc);
 }
 
-void String::setCharAt(unsigned int loc, char c)
+void String::setCharAt(unsigned int loc, char c) 
 {
 	if (loc < len) buffer[loc] = c;
 }
@@ -622,7 +622,7 @@ String String::substring(unsigned int left, unsigned int right) const
 	if (left >= len) return out;
 	if (right > len) right = len;
 	char temp = buffer[right];  // save the replaced character
-	buffer[right] = '\0';
+	buffer[right] = '\0';	
 	out = buffer + left;  // pointer arithmetic
 	buffer[right] = temp;  //restore character
 	return out;
