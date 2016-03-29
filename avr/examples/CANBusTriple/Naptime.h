@@ -92,6 +92,7 @@ void Naptime::tick()
             // Leave Bus1 awake and set a filter to wake the system up
             busses[i].setMode(CONFIGURATION);
             busses[i].setFilter( resetId, resetId );
+            busses[i].bitModify( CANINTF, 0, 0x03 );
             busses[i].bitModify( CANCTRL, controllerModes[i], 0xE0 ); // Restore previous Bus1 mode
             delay(2);
         }

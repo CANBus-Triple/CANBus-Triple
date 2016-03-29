@@ -12,13 +12,16 @@
 #include <Message.h>
 #include <QueueArray.h>
 
+// #define INCLUDE_DEFAULT_EEPROM
+#define SLEEP_ENABLE
+
 #define BUILDNAME "CANBus Triple Mazda"
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.6.0"
+    #define BUILD_VERSION "0.6.1"
 #endif
-// #define SLEEP_ENABLE
+
 
 
 CANBus CANBus1(CAN1SELECT, CAN1RESET, 1, "Bus 1");
@@ -52,7 +55,9 @@ Middleware *activeMiddleware[] = {
   new ChannelSwap(),
   mazdaLed,
   serviceCall,
+  #ifdef SLEEP_ENABLE
   new Naptime(0x0472, serialCommand),
+  #endif
   new MazdaWheelButton(mazdaLed, serviceCall)
 };
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );
