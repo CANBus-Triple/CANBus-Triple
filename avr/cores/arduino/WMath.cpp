@@ -4,7 +4,7 @@
   Part of the Wiring project - http://wiring.org.co
   Copyright (c) 2004-06 Hernando Barragan
   Modified 13 August 2006, David A. Mellis for Arduino - http://www.arduino.cc/
-
+  
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
   License as published by the Free Software Foundation; either
@@ -19,15 +19,13 @@
   Public License along with this library; if not, write to the
   Free Software Foundation, Inc., 59 Temple Place, Suite 330,
   Boston, MA  02111-1307  USA
-
-  $Id$
 */
 
 extern "C" {
   #include "stdlib.h"
 }
 
-void randomSeed(unsigned int seed)
+void randomSeed(unsigned long seed)
 {
   if (seed != 0) {
     srandom(seed);
