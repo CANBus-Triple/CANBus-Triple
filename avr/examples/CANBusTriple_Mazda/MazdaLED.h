@@ -1,6 +1,5 @@
 
 #include "Middleware.h"
-#include "SerialCommand.h"
 
 
 class MazdaLED : public Middleware
@@ -14,7 +13,7 @@ class MazdaLED : public Middleware
     unsigned long stockOverrideTimer;
     unsigned long statusOverrideTimer;
   public:
-    MazdaLED( QueueArray<Message> *q, SerialCommand *serialCommand );
+    MazdaLED( QueueArray<Message> *q );
     Message process( Message );
     void tick();
     // void init( QueueArray<Message> *q, byte enabled );
@@ -39,13 +38,10 @@ class MazdaLED : public Middleware
 int MazdaLED::sweepGauges = 8000;
 
 
-MazdaLED::MazdaLED( QueueArray<Message> *q, SerialCommand *serialCommand )
+MazdaLED::MazdaLED( QueueArray<Message> *q )
 {
   mainQueue = q;
   enabled = true;
-
-  // Register a serial command callback handler
-  serialCommand->registerCommand(0x16, this);
 
   // Instance Properties
   updateCounter = 0;

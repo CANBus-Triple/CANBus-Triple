@@ -18,34 +18,15 @@ public:
     unsigned long timer;
     unsigned short resetId;
 
-    Naptime(SerialCommand *serialCommand);
-    Naptime(int, SerialCommand *serialCommand);
+	Naptime(int resetMsgId) : enabled(true), timer(0), resetId(resetMsgId) {};
+    Naptime() : Naptime(0) {};	
     void commandHandler(byte* bytes, int length);
 };
 
 
-Naptime::Naptime(SerialCommand *serialCommand)
+void Naptime::commandHandler(byte* bytes, int length)
 {
-  timer = 0;
-  resetId = 0;
-  enabled = true;
-
-  // Set a command callback to enable disable sleep
-  // 4E01 on 4E00 off
-  serialCommand->registerCommand(0x4E, this);
-}
-
-Naptime::Naptime( int resetMessageId, SerialCommand *serialCommand )
-{
-  timer = 0;
-  resetId = resetMessageId;
-  enabled = true;
-
-  serialCommand->registerCommand(0x4E, this);
-}
-
-void Naptime::commandHandler(byte* bytes, int length){
-  enabled = bytes[0];
+    enabled = bytes[0];
 }
 
 void Naptime::tick()

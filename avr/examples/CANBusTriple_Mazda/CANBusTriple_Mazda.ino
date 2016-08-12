@@ -48,7 +48,10 @@ QueueArray<Message> writeQueue;
 */
 SerialCommand *serialCommand = new SerialCommand( &writeQueue );
 ServiceCall *serviceCall = new ServiceCall( &writeQueue );
-MazdaLED *mazdaLed = new MazdaLED( &writeQueue, serialCommand );
+#ifdef SLEEP_ENABLE
+Naptime *naptime = new Naptime(0x0472);
+#endif
+MazdaLED *mazdaLed = new MazdaLED( &writeQueue );
 
 Middleware *activeMiddleware[] = {
   serialCommand,
@@ -56,7 +59,7 @@ Middleware *activeMiddleware[] = {
   mazdaLed,
   serviceCall,
 #ifdef SLEEP_ENABLE
-  new Naptime(0x0472, serialCommand),
+  naptime,
 #endif
   new MazdaWheelButton(mazdaLed, serviceCall)
 };
@@ -71,6 +74,11 @@ void setup()
     /*
     *  Middleware Settings
     */
+#ifdef SLEEP_ENABLE
+    // Set a command callback to enable disable sleep (4E01 on 4E00 off)
+    serialCommand->registerCommand(0x4E, naptime);
+#endif  
+    serialCommand->registerCommand(0x16, mazdaLed);
 
     mazdaLed->enabled = cbt_settings.displayEnabled;
     serviceCall->setFilterPids();

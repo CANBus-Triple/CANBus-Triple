@@ -20,7 +20,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.6.1"
+    #define BUILD_VERSION "0.6.2"
 #endif
 
 
@@ -47,13 +47,16 @@ QueueArray<Message> writeQueue;
 */
 SerialCommand *serialCommand = new SerialCommand( &writeQueue );
 ServiceCall *serviceCall = new ServiceCall( &writeQueue );
+#ifdef SLEEP_ENABLE
+Naptime *naptime = new Naptime(0x0472);
+#endif
 
 Middleware *activeMiddleware[] = {
   serialCommand,
   // new ChannelSwap(),
   // serviceCall,
 #ifdef SLEEP_ENABLE
-  new Naptime(0x0472, serialCommand),
+  naptime,
 #endif
 };
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );
@@ -67,6 +70,10 @@ void setup()
     /*
     *  Middleware Settings
     */
+#ifdef SLEEP_ENABLE
+    // Set a command callback to enable disable sleep (4E01 on 4E00 off)
+    serialCommand->registerCommand(0x4E, naptime);
+#endif  
     serviceCall->setFilterPids();
 
     Serial.begin( 115200 ); // USB
