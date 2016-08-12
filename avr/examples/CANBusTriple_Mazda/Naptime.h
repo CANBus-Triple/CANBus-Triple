@@ -9,7 +9,7 @@
 
 class Naptime : public Middleware
 {
-  public:
+public:
     void tick();
     Message process( Message msg );
     void reset();
@@ -17,6 +17,7 @@ class Naptime : public Middleware
     boolean enabled;
     unsigned long timer;
     unsigned short resetId;
+
     Naptime(SerialCommand *serialCommand);
     Naptime(int, SerialCommand *serialCommand);
     void commandHandler(byte* bytes, int length);

@@ -1,7 +1,7 @@
 
 /*
-6/17/2012:
-Modified by Derek Kuschel for use with multiple MCP2515
+6/17/2012: Modified by Derek Kuschel for use with multiple MCP2515
+ More info at: http://modelrail.otenko.com/arduino/arduino-controller-area-network-can
 */
 
 
@@ -40,11 +40,11 @@ void CANBus::setBusId( unsigned int n )
 void CANBus::begin()
 {
     // Set the slaveSelectPin as an output
-    pinMode (SCK,OUTPUT);
-    pinMode (MISO,INPUT);
-    pinMode (MOSI, OUTPUT);
-    pinMode (_ss, OUTPUT);
-    pinMode (_reset,OUTPUT);
+    pinMode(SCK,OUTPUT);
+    pinMode(MISO,INPUT);
+    pinMode(MOSI, OUTPUT);
+    pinMode(_ss, OUTPUT);
+    pinMode(_reset,OUTPUT);
 
     // Initialize SPI:
     SPI.begin();
@@ -135,7 +135,7 @@ bool CANBus::baudConfig(int bitRate)
 /*
 *   New Baud rate calculation
 */
-bool CANBus::baudConfig(int bitRate)//sets bitrate for CAN node
+bool CANBus::baudConfig(int bitRate) // Sets bitrate for CAN node
 {
     // Calculate bit timing registers
     byte BRP;
@@ -230,9 +230,9 @@ int CANBus::getNextTxBuffer()
 {
     byte stat = this->readStatus();
 
-    if( (stat & 0x4) != 0x4 )   return 0;
-    if( (stat & 0x10) != 0x10 ) return 1;
-    if( (stat & 0x40) != 0x40 ) return 2;
+    if ( (stat & 0x4) != 0x4 )   return 0;
+    if ( (stat & 0x10) != 0x10 ) return 1;
+    if ( (stat & 0x40) != 0x40 ) return 2;
     return -1;
 }
 
@@ -408,7 +408,6 @@ void CANBus::transmitBuffer(int bufferId) // Transmits buffer
             break;
         default:
             return;
-            break;
     }
 
     // Delays removed from SEND command(pcruce_at_igpp.ucla.edu)
@@ -567,7 +566,6 @@ void CANBus::loadFullFrame(byte bufferId, byte length, unsigned short identifier
             break;
         default:
             return;
-            break;
     }
 
     // Generate id bytes before SPI write

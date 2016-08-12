@@ -19,7 +19,7 @@ System info and EEPROM
 0x01 0x10 0x03       Print bus 3 debug to serial
 0x01 0x16            Reboot to bootloader
 
- 
+
 Send CAN Packet
 ---------------
 Cmd    Bus id  PID  Data 0-7                 Length
@@ -74,15 +74,15 @@ TODO: Implement this ^^^
 
 
 struct middleware_command {
-  byte command;
-  // void (Middleware::*cb)(byte[], int);
-  Middleware *cbInstance;
+    byte command;
+    // void (Middleware::*cb)(byte[], int);
+    Middleware *cbInstance;
 };
 
 
 class SerialCommand : public Middleware
 {
-  public:
+public:
     SerialCommand( QueueArray<Message> *q );
     void tick();
     Message process( Message msg );
@@ -91,12 +91,13 @@ class SerialCommand : public Middleware
     void printMessageToSerial(Message msg);
     void registerCommand(byte commandId, Middleware *cbInstance);
     void resetToBootloader();
-  private:
+
+private:
     int freeRam();
     QueueArray<Message>* mainQueue;
     void printChannelDebug();
     void printChannelDebug(CANBus);
-    void processCommand(int command);
+    void processCommand(byte command);
     int  getCommandBody( byte* cmd, int length );
     void clearBuffer();
     void getAndSend();
@@ -150,7 +151,7 @@ void SerialCommand::tick()
     // Serial.println(passthroughMode, BIN);
 
     // Pass-through mode for bluetooth DFU mode
-    if( passthroughMode == true ){
+    if( passthroughMode ){
         while(Serial.available()) Serial1.write(Serial.read());
         while(Serial1.available()) Serial.write(Serial1.read());
         return;
@@ -170,8 +171,8 @@ void SerialCommand::tick()
 
 Message SerialCommand::process( Message msg )
 {
-  printMessageToSerial(msg);
-  return msg;
+    printMessageToSerial(msg);
+    return msg;
 }
 
 
@@ -186,8 +187,8 @@ void SerialCommand::printMessageToSerial( Message msg )
     return;
   }
   
-  // Bluetooth rate limiting
-  if ( activeSerial == &Serial1 && btRateLimit() ) return;
+    // Bluetooth rate limiting
+    if ( activeSerial == &Serial1 && btRateLimit() ) return;
 
 #ifdef JSON_OUT
 
@@ -227,7 +228,7 @@ void SerialCommand::printMessageToSerial( Message msg )
 }
 
 
-void SerialCommand::processCommand(int command)
+void SerialCommand::processCommand(byte command)
 {
 //  Commented out because causes corrupted data when sending serial to Android Bluetooth
 //  The necessary delay is now moved into method getCommandBody() 
@@ -498,7 +499,7 @@ void SerialCommand::bluetooth()
 int SerialCommand::getCommandBody( byte* cmd, int length )
 {
     // Loop until requested amount of bytes are received. Needed for BT latency
-    int i = 0;    
+    int i = 0;
     int timeout = COMMAND_TIMEOUT;
     while( i < length ) {
         // Cannot simply use delay() because Android Bluetooth gets corrupted data
@@ -585,13 +586,12 @@ void SerialCommand::printChannelDebug(CANBus channel)
 
 void SerialCommand::registerCommand(byte commandId, Middleware *cbInstance)
 {
-  // About if we've reached the max number of registered callbacks
-  if( mwCommandIndex >= MAX_MW_CALLBACKS ) return;
+    // About if we've reached the max number of registered callbacks
+    if( mwCommandIndex >= MAX_MW_CALLBACKS ) return;
 
-  mw_cmds[mwCommandIndex].command = commandId;
-  mw_cmds[mwCommandIndex].cbInstance = cbInstance;
-  mwCommandIndex++;
-
+    mw_cmds[mwCommandIndex].command = commandId;
+    mw_cmds[mwCommandIndex].cbInstance = cbInstance;
+    mwCommandIndex++;
 }
 
 

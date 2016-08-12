@@ -17,11 +17,10 @@ public:
     boolean enabled;
     unsigned long timer;
     unsigned short resetId;
+
     Naptime(SerialCommand *serialCommand);
     Naptime(int, SerialCommand *serialCommand);
     void commandHandler(byte* bytes, int length);
-private:
-
 };
 
 
