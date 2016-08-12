@@ -9,8 +9,7 @@
 #include <SPI.h>
 #include <EEPROM.h>
 #include <CANBus.h>
-#include <Message.h>
-#include <QueueArray.h>
+#include <MessageQueue.h>
 
 
 // #define SLEEP_ENABLE
@@ -20,9 +19,11 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.6.3"
+    #define BUILD_VERSION "0.7.0"
 #endif
 
+#define READ_BUFFER_SIZE 20
+#define WRITE_BUFFER_SIZE 10
 
 
 CANBus CANBus1(CAN1SELECT, CAN1RESET, 1, "Bus 1");
@@ -38,8 +39,10 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 #include "ChannelSwap.h"
 #include "Naptime.h"
 
-QueueArray<Message> readQueue;
-QueueArray<Message> writeQueue;
+Message readBuffer[READ_BUFFER_SIZE];
+Message writeBuffer[WRITE_BUFFER_SIZE];
+MessageQueue readQueue(READ_BUFFER_SIZE, readBuffer);
+MessageQueue writeQueue(WRITE_BUFFER_SIZE, writeBuffer);
 
 /*
 *  Middleware Setup
@@ -150,16 +153,14 @@ void loop()
     if (!readQueue.isEmpty()) {
         Message msg = readQueue.pop();
         for(int i = 0; i <= activeMiddlewareLength - 1; i++) msg = activeMiddleware[i]->process(msg);
-        if (msg.dispatch && !writeQueue.isFull()) writeQueue.push(msg);
+        if (msg.dispatch) writeQueue.push(msg);
     }
 
-    boolean error = false;
-    while(!writeQueue.isEmpty() && !error) {
+    if (!writeQueue.isEmpty()) {
         Message msg = writeQueue.pop();
-        error = !sendMessage(msg, busses[msg.busId - 1]);
 
         // When TX Failure, add back to queue
-        if (error) writeQueue.push(msg);
+        if (msg.dispatch && !sendMessage(msg, busses[msg.busId - 1])) writeQueue.push(msg);
     }
 
     // Pet the dog
@@ -173,8 +174,6 @@ void loop()
 */
 boolean sendMessage( Message msg, CANBus bus )
 {
-    if( msg.dispatch == false ) return true;
-
     int ch = bus.getNextTxBuffer();
     if (ch < 0 || ch > 2) return false; // All TX buffers full
 
@@ -198,14 +197,10 @@ void readBus( CANBus bus )
 }
 
 
-void readMsgFromBuffer(CANBus bus, byte bufferId, byte rx_status)
+bool readMsgFromBuffer(CANBus bus, byte bufferId, byte rx_status)
 {
-  // Abort if readQueue is full
-  if (readQueue.isFull()) return;
-
-  Message msg;
-  msg.busStatus = rx_status;
-  msg.busId = bus.busId;
-  bus.readFullFrame(bufferId, &msg.length, msg.frame_data, &msg.frame_id );
-  readQueue.push(msg);  
+    Message * m = readQueue.write(bus.busId, rx_status);
+    if (m == NULL) return false;
+    bus.readFullFrame(bufferId, &m->length, m->frame_data, &m->frame_id);
+    return true;
 }

@@ -1,4 +1,5 @@
 
+#include <MessageQueue.h>
 #include "Middleware.h"
 
 
@@ -6,14 +7,14 @@ class MazdaLED : public Middleware
 {
 
   private:
-    QueueArray<Message>* mainQueue;
+    MessageQueue* mainQueue;
     unsigned long updateCounter;
     void pushNewMessage();
     int fastUpdateDelay;
     unsigned long stockOverrideTimer;
     unsigned long statusOverrideTimer;
   public:
-    MazdaLED( QueueArray<Message> *q );
+    MazdaLED( MessageQueue *q );
     Message process( Message );
     void tick();
     // void init( QueueArray<Message> *q, byte enabled );
@@ -38,7 +39,7 @@ class MazdaLED : public Middleware
 int MazdaLED::sweepGauges = 8000;
 
 
-MazdaLED::MazdaLED( QueueArray<Message> *q )
+MazdaLED::MazdaLED( MessageQueue *q )
 {
   mainQueue = q;
   enabled = true;

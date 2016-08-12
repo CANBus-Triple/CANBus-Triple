@@ -69,6 +69,7 @@ TODO: Implement this ^^^
 #define COMMAND_TIMEOUT 100   // ms to wait before serial command timeout
 
 #include <CANBus.h>
+#include <MessageQueue.h>
 
 #include "Middleware.h"
 
@@ -84,7 +85,7 @@ struct middleware_command {
 class SerialCommand : public Middleware
 {
 public:
-    SerialCommand( QueueArray<Message> *q );
+    SerialCommand( MessageQueue *q );
     void tick();
     Message process( Message msg );
     void commandHandler(byte* bytes, int length);
@@ -95,7 +96,7 @@ public:
 
 private:
     int freeRam();
-    QueueArray<Message>* mainQueue;
+    MessageQueue* mainQueue;
     void printChannelDebug();
     void printChannelDebug(CANBus);
     void processCommand(byte command);
@@ -127,7 +128,7 @@ int byteCount = 0;
 struct middleware_command mw_cmds[MAX_MW_CALLBACKS];
 
 
-SerialCommand::SerialCommand( QueueArray<Message> *q )
+SerialCommand::SerialCommand( MessageQueue *q )
 {
     mainQueue = q;
 

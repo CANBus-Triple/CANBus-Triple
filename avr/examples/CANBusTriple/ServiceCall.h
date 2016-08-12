@@ -1,4 +1,5 @@
 
+#include <MessageQueue.h>
 #include "Middleware.h"
 
 #define NUM_PID_TO_PROCESS 2
@@ -8,13 +9,13 @@ class ServiceCall : public Middleware
 {
 
   private:
-    QueueArray<Message>* mainQueue;
+    MessageQueue* mainQueue;
     void saveSettings();
     byte* index;
   public:
     void tick();
     Message process(Message msg);
-    ServiceCall( QueueArray<Message> *q );
+    ServiceCall( MessageQueue *q );
     void commandHandler(byte* bytes, int length);
     unsigned long lastServiceCallSent;
     void sendNextServiceCall( struct pid pid[] );
@@ -28,7 +29,7 @@ class ServiceCall : public Middleware
 };
 
 
-ServiceCall::ServiceCall( QueueArray<Message> *q )
+ServiceCall::ServiceCall( MessageQueue *q )
 {
 
   lastServiceCallSent = millis();
