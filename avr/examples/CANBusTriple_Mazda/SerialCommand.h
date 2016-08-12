@@ -75,6 +75,7 @@ TODO: Implement this ^^^
 
 struct middleware_command {
     byte command;
+    int dataLength;
     // void (Middleware::*cb)(byte[], int);
     Middleware *cbInstance;
 };
@@ -89,7 +90,7 @@ public:
     void commandHandler(byte* bytes, int length);
     Stream* activeSerial;
     void printMessageToSerial(Message msg);
-    void registerCommand(byte commandId, Middleware *cbInstance);
+    void registerCommand(byte commandId, int dataLength, Middleware *cbInstance);
     void resetToBootloader();
 
 private:
@@ -179,14 +180,48 @@ Message SerialCommand::process( Message msg )
 void SerialCommand::commandHandler(byte* bytes, int length){}
 
 
+void SerialCommand::processCommand(byte command)
+{
+//  Commented out because causes corrupted data when sending serial to Android Bluetooth
+//  The necessary delay is now moved into method getCommandBody() 
+//  delay(32); // Delay to wait for the entire command from Serial
+
+    switch( command ) {
+        case 0x01:
+            settingsCall();
+            break;
+        case 0x02:
+            getAndSend();
+            break;
+        case 0x03:
+            logCommand();
+            break;
+        case 0x04:
+            setBluetoothFilter();
+            break;
+        case 0x08:
+            bluetooth();
+            break;
+        default:
+            // Check for Middleware commands
+            for(int i = 0; i < mwCommandIndex; i++ ){
+                if( mw_cmds[i].command != command ) continue;
+
+                byte cmd[mw_cmds[i].dataLength];
+                int bytesRead = getCommandBody( cmd, mw_cmds[i].dataLength );
+                delay(1);
+                mw_cmds[i].cbInstance->commandHandler(cmd, bytesRead);
+                break;
+            }
+            break;
+    }
+
+    clearBuffer();
+}
+
+
 void SerialCommand::printMessageToSerial( Message msg )
 {
-  // Bus Filter
-  byte flag = 0x1 << (msg.busId - 1);
-  if( !(busLogEnabled & flag) ){
-    return;
-  }
-
     // Bluetooth rate limiting
     if ( activeSerial == &Serial1 && btRateLimit() ) return;
 
@@ -225,48 +260,6 @@ void SerialCommand::printMessageToSerial( Message msg )
     activeSerial->write( NEWLINE );
 
 #endif
-}
-
-
-void SerialCommand::processCommand(byte command)
-{
-//  Commented out because causes corrupted data when sending serial to Android Bluetooth
-//  The necessary delay is now moved into method getCommandBody() 
-//  delay(32); // Delay to wait for the entire command from Serial
-
-  switch( command ){
-    case 0x01:
-      settingsCall();
-    break;
-    case 0x02:
-      getAndSend();
-    break;
-    case 0x03:
-      logCommand();
-    break;
-    case 0x04:
-      setBluetoothFilter();
-    break;
-    case 0x08:
-      bluetooth();
-    break;
-    default:
-      // Check for Middleware commands
-      for(int i=0; i<mwCommandIndex; i++ ){
-        if( mw_cmds[i].command == command ){
-
-          byte cmd[64];
-          int bytesRead = getCommandBody( cmd, 64 );
-          delay(1);
-          // (*mw_cmds[i].cb)( cmd, bytesRead );
-          mw_cmds[i].cbInstance->commandHandler(cmd, bytesRead);
-          break;
-        }
-      }
-    break;
-  }
-
-  clearBuffer();
 }
 
 
@@ -584,12 +577,13 @@ void SerialCommand::printChannelDebug(CANBus channel)
 }
 
 
-void SerialCommand::registerCommand(byte commandId, Middleware *cbInstance)
+void SerialCommand::registerCommand(byte commandId, int dataLength, Middleware *cbInstance)
 {
     // About if we've reached the max number of registered callbacks
     if( mwCommandIndex >= MAX_MW_CALLBACKS ) return;
 
     mw_cmds[mwCommandIndex].command = commandId;
+    mw_cmds[mwCommandIndex].dataLength = dataLength;
     mw_cmds[mwCommandIndex].cbInstance = cbInstance;
     mwCommandIndex++;
 }

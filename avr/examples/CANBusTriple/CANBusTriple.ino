@@ -20,7 +20,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.6.2"
+    #define BUILD_VERSION "0.6.3"
 #endif
 
 
@@ -72,7 +72,7 @@ void setup()
     */
 #ifdef SLEEP_ENABLE
     // Set a command callback to enable disable sleep (4E01 on 4E00 off)
-    serialCommand->registerCommand(0x4E, naptime);
+    serialCommand->registerCommand(0x4E, 1, naptime);
 #endif  
     serviceCall->setFilterPids();
 
