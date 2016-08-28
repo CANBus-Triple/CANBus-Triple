@@ -2,8 +2,9 @@
 // Created by Emanuele on 09/08/2016.
 //
 
-#ifndef CANBUS_TRIPLE_CANFRAMEQUEUE_H
-#define CANBUS_TRIPLE_CANFRAMEQUEUE_H
+#ifndef _CBT_MessageQueue_H
+#define _CBT_MessageQueue_H
+
 
 struct Message {
     byte length;
@@ -14,69 +15,55 @@ struct Message {
     bool dispatch;
 };
 
+
 class MessageQueue {
 public:
-    MessageQueue(const unsigned int capacity, Message * buffer)
-            : contents(buffer), size(capacity), head(-1), tail(-1) {};
-
-    bool isEmpty();
+    MessageQueue(const unsigned int bufSize, Message * buffer)
+	   : contents(buffer), size(bufSize), items(0), head(0), tail(0) {}
+    bool isEmpty() const;
     Message pop();
-    Message * write(const unsigned int busId, const unsigned int busStatus = 0);
     bool push(const Message msg);
+    bool isFull() const;
 
 private:
-    Message* contents;
-    unsigned int size;
+    Message * contents;
+    const unsigned int size;
+    int items;
     int head;
     int tail;
 };
 
-bool MessageQueue::isEmpty()
-{
-    return (head == -1);
+
+bool MessageQueue::isEmpty() const {
+    return items == 0;
 }
 
-Message MessageQueue::pop()
-{
-    if (head == -1) {
+bool MessageQueue::isFull() const {
+    return items == size;
+}
+
+bool MessageQueue::push(const Message msg) {
+    if (isFull()) return false;
+
+    contents[tail++] = msg;
+    if (tail == size) tail = 0; // wrap-around index.
+    items++;
+
+    return true;
+}
+
+Message MessageQueue::pop() {
+    if (isEmpty()) {
         Message m;
         m.frame_id = 0;
         m.dispatch = false;
         return m;
     }
-    int lastHead = head;
-    if (head == tail) tail = head = -1;
-    else head = (head + 1) % size;
-    return contents[lastHead];
-}
-
-Message * MessageQueue::write(const unsigned int busId, const unsigned int busStatus)
-{
-    if (tail > -1) {
-        int newTail = (tail + 1) % size;
-        if (newTail == head) return NULL;
-        tail = newTail;
-    } else {
-        tail = head = 0;
-    }
-    Message * m = &contents[tail];
-    m->length = m->frame_id = 0;
-    memset(m->frame_data, 0, 8);
-    m->busStatus = busStatus;
-    m->busId = busId;
-    m->dispatch = false;
+    Message m = contents[head++];
+    items--;
+    if (head == size) head = 0; // wrap-around index.
     return m;
 }
 
-bool MessageQueue::push(const Message msg)
-{
-    Message * m = this->write(msg.busStatus, msg.busId);
-    if (m == NULL) return false;
-    m->length = msg.length;
-    m->frame_id = msg.frame_id;
-    m->dispatch = msg.dispatch;
-    for(int d = 0; d < msg.length; d++) m->frame_data[d] = msg.frame_data[d];
-    return true;
-}
 
-#endif //CANBUS_TRIPLE_CANFRAMEQUEUE_H
+#endif // _CBT_MessageQueue_H

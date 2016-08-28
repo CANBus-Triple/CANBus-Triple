@@ -1,6 +1,7 @@
 #ifndef MazdaWheelButton_H
 #define MazdaWheelButton_H
 
+#include <MessageQueue.h>
 #import "Middleware.h"
 #import "MazdaLED.h"
 #import "ServiceCall.h"

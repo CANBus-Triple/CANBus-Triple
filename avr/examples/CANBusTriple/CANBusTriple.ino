@@ -19,7 +19,7 @@
 #ifdef HAS_AUTOMATIC_VERSIONING
     #include "_Version.h"
 #else
-    #define BUILD_VERSION "0.7.0"
+    #define BUILD_VERSION "0.7.1"
 #endif
 
 #define READ_BUFFER_SIZE 20
@@ -156,11 +156,14 @@ void loop()
         if (msg.dispatch) writeQueue.push(msg);
     }
 
-    if (!writeQueue.isEmpty()) {
+    bool error = false;
+    while(!writeQueue.isEmpty() && !error) {
         Message msg = writeQueue.pop();
-
-        // When TX Failure, add back to queue
-        if (msg.dispatch && !sendMessage(msg, busses[msg.busId - 1])) writeQueue.push(msg);
+	if (msg.dispatch) {
+	    error = !sendMessage(msg, busses[msg.busId - 1]);
+            // When TX Failure, add back to queue
+            if (error) writeQueue.push(msg);
+        }
     }
 
     // Pet the dog
@@ -191,16 +194,25 @@ bool sendMessage( Message msg, CANBus bus )
 */
 void readBus( CANBus bus )
 {
-    byte rx_status = bus.readStatus();
-    if (rx_status & 0x1) readMsgFromBuffer(bus, 0, rx_status);
-    if (rx_status & 0x2) readMsgFromBuffer(bus, 1, rx_status);
+    byte rx_status = 0x3;
+    bool bufferAvailable = true;
+    while(rx_status == 0x3 && bufferAvailable) {
+        rx_status = bus.readStatus();
+        if (rx_status & 0x1) 
+            bufferAvailable = readMsgFromBuffer(bus, 0, rx_status);
+        if ((rx_status & 0x2) && bufferAvailable) 
+            bufferAvailable = readMsgFromBuffer(bus, 1, rx_status);
+    }
 }
 
 
 bool readMsgFromBuffer(CANBus bus, byte bufferId, byte rx_status)
 {
-    Message * m = readQueue.write(bus.busId, rx_status);
-    if (m == NULL) return false;
-    bus.readFullFrame(bufferId, &m->length, m->frame_data, &m->frame_id);
-    return true;
+    if (readQueue.isFull()) return false;
+    Message msg;
+    msg.busStatus = rx_status;
+    msg.busId = bus.busId;
+    msg.dispatch = false;
+    bus.readFullFrame(bufferId, &msg.length, msg.frame_data, &msg.frame_id );  
+    return readQueue.push(msg);
 }

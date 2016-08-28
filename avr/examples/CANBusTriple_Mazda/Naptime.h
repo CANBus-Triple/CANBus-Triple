@@ -5,6 +5,7 @@
 #include <avr/power.h>
 #include <avr/sleep.h>
 #include <CANBus.h>
+#include <MessageQueue.h>
 
 
 class Naptime : public Middleware

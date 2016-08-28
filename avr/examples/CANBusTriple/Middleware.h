@@ -2,6 +2,9 @@
 #ifndef CANMiddleware_H
 #define CANMiddleware_H
 
+#include <MessageQueue.h>
+
+
 class Middleware
 {
   public:
