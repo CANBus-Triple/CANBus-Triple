@@ -21,8 +21,6 @@ public:
 	Naptime(int resetMsgId) : enabled(true), timer(0), resetId(resetMsgId) {};
     Naptime() : Naptime(0) {};	
     void commandHandler(byte* bytes, int length);
-private:
-
 };
 
 

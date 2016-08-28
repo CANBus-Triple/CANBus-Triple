@@ -70,7 +70,6 @@ TODO: Implement this ^^^
 
 #include <CANBus.h>
 #include <MessageQueue.h>
-
 #include "Middleware.h"
 
 
@@ -153,7 +152,7 @@ void SerialCommand::tick()
     // Serial.println(passthroughMode, BIN);
 
     // Pass-through mode for bluetooth DFU mode
-    if ( passthroughMode ){
+    if( passthroughMode ){
         while(Serial.available()) Serial1.write(Serial.read());
         while(Serial1.available()) Serial.write(Serial1.read());
         return;
@@ -568,10 +567,10 @@ void SerialCommand::printChannelDebug(CANBus channel)
     activeSerial->print( channel.readStatus(), HEX );
     activeSerial->print( F("\", \"error\":\""));
     activeSerial->print( channel.readRegister(EFLG), HEX );
-    /*if ( activeSerial == &Serial ) {
+    if ( activeSerial == &Serial ) {
         activeSerial->print( F("\", \"errorText\":\""));
         printEFLG(channel);
-    }*/
+    }
     activeSerial->print( F("\", \"nextTxBuffer\":\""));
     activeSerial->print( channel.getNextTxBuffer(), DEC );
     activeSerial->println(F("\"}"));

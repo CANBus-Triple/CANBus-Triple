@@ -1,4 +1,3 @@
-
 #include <MessageQueue.h>
 #include "Middleware.h"
 
@@ -17,7 +16,7 @@ class MazdaLED : public Middleware
     MazdaLED( MessageQueue *q );
     Message process( Message );
     void tick();
-    // void init( QueueArray<Message> *q, byte enabled );
+    // void init( MessageQueue *q, byte enabled );
 
     void showNewPageMessage();
     boolean enabled;

@@ -181,7 +181,7 @@ void loop()
 /*
 *  Load CAN Controller buffer and set send flag
 */
-boolean sendMessage( Message msg, CANBus bus )
+bool sendMessage( Message msg, CANBus bus )
 {
     int ch = bus.getNextTxBuffer();
     if (ch < 0 || ch > 2) return false; // All TX buffers full

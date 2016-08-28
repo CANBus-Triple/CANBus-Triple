@@ -227,5 +227,5 @@ void Settings::firstbootSetup()
     digitalWrite( BOOT_LED, LOW );
     delay(500);
   }
-
 }
+

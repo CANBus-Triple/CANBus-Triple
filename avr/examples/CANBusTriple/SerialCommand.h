@@ -70,7 +70,6 @@ TODO: Implement this ^^^
 
 #include <CANBus.h>
 #include <MessageQueue.h>
-
 #include "Middleware.h"
 
 

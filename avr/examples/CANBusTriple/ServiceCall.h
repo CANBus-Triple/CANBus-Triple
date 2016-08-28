@@ -1,4 +1,3 @@
-
 #include <MessageQueue.h>
 #include "Middleware.h"
 
