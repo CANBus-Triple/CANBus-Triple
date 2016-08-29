@@ -197,7 +197,7 @@ void readBus( CANBus * bus )
 {
     byte rx_status = 0x3;
     bool bufferAvailable = true;
-    while(rx_status == 0x3 && bufferAvailable) {
+    while((rx_status & 0x3) && bufferAvailable) {
         rx_status = bus->readStatus();
         if (rx_status & 0x1) 
             bufferAvailable = readMsgFromBuffer(bus, 0, rx_status);
