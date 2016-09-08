@@ -1,23 +1,22 @@
-
+#include <MessageQueue.h>
 #include "Middleware.h"
-#include "SerialCommand.h"
 
 
 class MazdaLED : public Middleware
 {
 
   private:
-    QueueArray<Message>* mainQueue;
+    MessageQueue* mainQueue;
     unsigned long updateCounter;
     void pushNewMessage();
     int fastUpdateDelay;
     unsigned long stockOverrideTimer;
     unsigned long statusOverrideTimer;
   public:
-    MazdaLED( QueueArray<Message> *q, SerialCommand *serialCommand );
+    MazdaLED( MessageQueue *q );
     Message process( Message );
     void tick();
-    // void init( QueueArray<Message> *q, byte enabled );
+    // void init( MessageQueue *q, byte enabled );
 
     void showNewPageMessage();
     boolean enabled;
@@ -39,13 +38,10 @@ class MazdaLED : public Middleware
 int MazdaLED::sweepGauges = 8000;
 
 
-MazdaLED::MazdaLED( QueueArray<Message> *q, SerialCommand *serialCommand )
+MazdaLED::MazdaLED( MessageQueue *q )
 {
   mainQueue = q;
   enabled = true;
-
-  // Register a serial command callback handler
-  serialCommand->registerCommand(0x16, this);
 
   // Instance Properties
   updateCounter = 0;

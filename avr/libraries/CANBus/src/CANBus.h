@@ -155,15 +155,6 @@ CNF3=b'00000010'=0x02 = SOF = 0  & WAKFIL = 0 & PS2 = 3
 #include "Arduino.h"
 
 
-struct MessageNew {
-    byte length;
-    unsigned short frame_id;
-    byte frame_data[8];
-    unsigned int busStatus;
-    unsigned int busId;
-    bool dispatch;
-};
-
 enum CANMode {CONFIGURATION,NORMAL,SLEEP,LISTEN,LOOPBACK,UNKNOWN};
 
 
